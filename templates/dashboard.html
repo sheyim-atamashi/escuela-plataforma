@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Control</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .niveles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 30px 0; }
+        .nivel { background: #ecf0f1; padding: 15px; text-align: center; border-radius: 8px; text-decoration: none; color: #2c3e50; }
+        .nivel:hover { background: #bdc3c7; }
+        .logout { margin-top: 30px; display: inline-block; color: #e74c3c; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>Panel de Control</h1>
+    <p>Bienvenido, <strong>{{ user.username }}</strong> (Rol: {{ user.role }})</p>
+    <p>Aquí están los 22 niveles de la Escuela. Haz clic en cualquier nivel para ver su contenido (cuando esté disponible).</p>
+    
+    <div class="niveles">
+        {% for n in range(1, 23) %}
+            <a href="/nivel/{{ n }}" class="nivel">Nivel {{ n }}</a>
+        {% endfor %}
+    </div>
+
+    <a href="/logout" class="logout">Cerrar Sesión</a>
+</body>
+</html>
