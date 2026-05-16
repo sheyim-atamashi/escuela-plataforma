@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vestíbulo de la Escuela de Misterios</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0e1a; font-family: 'Segoe UI', Roboto, sans-serif; padding: 2rem; color: #eef; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: rgba(20, 25, 40, 0.85); backdrop-filter: blur(4px); border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid rgba(200,180,100,0.3); }
+        h1, h2 { font-weight: 300; border-left: 4px solid #e0b; padding-left: 1rem; margin-bottom: 1rem; }
+        .language-selector { text-align: right; margin-bottom: 1rem; }
+        .language-selector button { background: #2a2f3f; border: none; color: white; padding: 0.3rem 0.8rem; margin: 0 0.2rem; border-radius: 2rem; cursor: pointer; }
+        input, textarea, select { width: 100%; padding: 0.6rem; margin: 0.5rem 0; background: #1e2230; border: 1px solid #4a4f6a; border-radius: 0.8rem; color: #eef; }
+        button { background: #8b6b4d; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 2rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        button:hover { background: #a57c5a; transform: scale(0.98); }
+        .chat-box { height: 400px; overflow-y: auto; padding: 10px; background: #0f121f; border-radius: 1rem; margin-bottom: 1rem; }
+        .user-msg { background: #2a6f4f; color: white; padding: 8px 14px; margin: 8px; border-radius: 24px 24px 4px 24px; display: inline-block; max-width: 80%; text-align: right; }
+        .hermes-msg { background: #4a4a6a; color: #ffecb3; padding: 8px 14px; margin: 8px; border-radius: 24px 24px 24px 4px; display: inline-block; max-width: 80%; text-align: left; }
+        .msg-container { display: flex; justify-content: flex-end; }
+        .msg-container.hermes { justify-content: flex-start; }
+        .hilo { background: #1a1f2e; padding: 0.8rem; margin: 0.5rem 0; border-radius: 1rem; cursor: pointer; }
+        .hilo:hover { background: #2a2f44; }
+        a { color: #dbb86b; text-decoration: none; }
+        .btn-invitacion { background: #c49a6c; margin-top: 1rem; }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .flex-row input { flex: 1; }
+    </style>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div class="language-selector">
+            <button @click="setLanguage('es')">🇪🇸 Español</button>
+            <button @click="setLanguage('en')">🇬🇧 English</button>
+            <button @click="setLanguage('zh')">🇨🇳 中文</button>
+        </div>
+        <h1>⛩️ Vestíbulo de la Escuela de Misterios</h1>
+        <p style="margin-bottom: 2rem;"><em>Un lugar para preguntas sin prisa, debates sin dueño y el mensajero Hermes.</em></p>
+
+        <div class="card">
+            <input type="text" v-model="seudonimo" placeholder="Tu nombre o seudónimo (cualquiera)" style="width: 70%; display: inline-block;">
+            <button @click="guardarSeudonimo" style="width: 28%;">Entrar / Cambiar nombre</button>
+        </div>
+
+        <div class="card" v-if="seudonimoGuardado">
+            <h2>💬 Conversa con Hermes</h2>
+            <div class="chat-box" ref="chatBox">
+                <div v-for="msg in conversacion" :key="msg.id">
+                    <div :class="msg.rol === 'user' ? 'msg-container' : 'msg-container hermes'">
+                        <div :class="msg.rol === 'user' ? 'user-msg' : 'hermes-msg'">
+                            <strong>{{ msg.rol === 'user' ? seudonimoGuardado : 'Hermes' }}:</strong> {{ msg.texto }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-row">
+                <input type="text" v-model="nuevoMensaje" @keyup.enter="enviarMensaje" placeholder="Escribe tu pregunta...">
+                <button @click="enviarMensaje">Enviar</button>
+                <button @click="nuevoChat" style="background-color: #6c757d;">🗑️ Nuevo chat</button>
+            </div>
+            <div v-if="cargando" style="margin-top: 10px; font-style: italic;">🕊️ Hermes está pensando...</div>
+        </div>
+
+        <div class="card" v-if="seudonimoGuardado">
+            <h2>📚 Foro de discusión</h2>
+            <button @click="cargarHilos">⟳ Actualizar hilos</button>
+            <div v-for="hilo in hilos" :key="hilo.id" class="hilo" @click="verHilo(hilo.id)">
+                <strong>{{ hilo.titulo }}</strong> — por {{ hilo.autor }} ({{ new Date(hilo.fecha_creacion).toLocaleString() }})
+            </div>
+            <h3>Crear nuevo hilo</h3>
+            <input v-model="nuevoTitulo" placeholder="Título del hilo">
+            <textarea v-model="nuevoContenido" placeholder="Primer mensaje del hilo"></textarea>
+            <button @click="crearHilo">📌 Publicar hilo</button>
+        </div>
+
+        <div class="card">
+            <h2>📖 Materiales recomendados (enlaces externos)</h2>
+            <ul>
+                <li><a href="#" @click.prevent="abrirEnlace('https://archive.org/details/kybalion')">El Kybalion (PDF)</a></li>
+                <li><a href="#" @click.prevent="abrirEnlace('https://www.youtube.com/watch?v=...')">Película: El nombre de la rosa</a></li>
+                <li><a href="#" @click.prevent="abrirEnlace('https://www.sacred-texts.com/')">Biblioteca de textos sagrados</a></li>
+            </ul>
+        </div>
+
+        <div class="card" v-if="mostrarInvitacion" style="text-align: center;">
+            <p>✨ ¿Estás sintiendo el llamado? ✨</p>
+            <button class="btn-invitacion" @click="irARegistro">Dar el primer paso</button>
+        </div>
+
+        <div class="card" style="text-align: center; font-size: 0.8rem;">
+            🌙 El vestíbulo es libre. La puerta de la Escuela está más allá.
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp } = Vue;
+    createApp({
+        data() {
+            return {
+                seudonimo: '',
+                seudonimoGuardado: localStorage.getItem('seudonimo') || '',
+                conversacion: [],
+                nuevoMensaje: '',
+                cargando: false,
+                hilos: [],
+                nuevoTitulo: '',
+                nuevoContenido: '',
+                mostrarInvitacion: false,
+                contadorMensajes: 0,
+                invitacionMostrada: localStorage.getItem('invitacionMostrada')
+            };
+        },
+        mounted() {
+            if (this.seudonimoGuardado) {
+                this.cargarHilos();
+                const guardada = localStorage.getItem('conversacion_' + this.seudonimoGuardado);
+                if (guardada) this.conversacion = JSON.parse(guardada);
+                this.contadorMensajes = this.conversacion.filter(m => m.rol === 'user').length;
+                if (!this.invitacionMostrada && this.contadorMensajes >= 3) this.mostrarInvitacion = true;
+            }
+        },
+        methods: {
+            setLanguage(lang) {
+                localStorage.setItem('lang', lang);
+                location.reload();
+            },
+            guardarSeudonimo() {
+                if (this.seudonimo.trim()) {
+                    this.seudonimoGuardado = this.seudonimo.trim();
+                    localStorage.setItem('seudonimo', this.seudonimoGuardado);
+                    // Cargar conversación previa de este seudónimo
+                    const guardada = localStorage.getItem('conversacion_' + this.seudonimoGuardado);
+                    if (guardada) {
+                        this.conversacion = JSON.parse(guardada);
+                    } else {
+                        this.conversacion = [];
+                    }
+                    this.cargarHilos();
+                }
+            },
+            nuevoChat() {
+                if (confirm('¿Borrar la conversación actual y empezar de cero?')) {
+                    this.conversacion = [];
+                    if (this.seudonimoGuardado) {
+                        localStorage.removeItem('conversacion_' + this.seudonimoGuardado);
+                    }
+                    // Opcional: resetear memoria del backend (comentado por si no implementaste el endpoint)
+                    // fetch('/reset_memoria', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seudonimo: this.seudonimoGuardado }) });
+                }
+            },
+            async enviarMensaje() {
+                if (!this.nuevoMensaje.trim() || !this.seudonimoGuardado) return;
+                const texto = this.nuevoMensaje.trim();
+                this.conversacion.push({ id: Date.now(), rol: 'user', texto });
+                this.nuevoMensaje = '';
+                this.cargando = true;
+                // Scroll al final
+                this.$nextTick(() => {
+                    if (this.$refs.chatBox) this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight;
+                });
+                try {
+                    const res = await fetch('/hermes/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mensaje: texto,
+                            contexto: localStorage.getItem('lang') || 'es',
+                            seudonimo: this.seudonimoGuardado
+                        })
+                    });
+                    const data = await res.json();
+                    const respuesta = data.respuesta || "Hermes medita. Vuelve a preguntar.";
+                    this.conversacion.push({ id: Date.now() + 1, rol: 'hermes', texto: respuesta });
+                    localStorage.setItem('conversacion_' + this.seudonimoGuardado, JSON.stringify(this.conversacion));
+                    this.contadorMensajes++;
+                    if (!this.invitacionMostrada && this.contadorMensajes >= 3) {
+                        this.mostrarInvitacion = true;
+                        localStorage.setItem('invitacionMostrada', 'true');
+                    }
+                } catch(e) {
+                    this.conversacion.push({ id: Date.now() + 1, rol: 'hermes', texto: "Hermes no responde ahora. Intenta más tarde." });
+                }
+                this.cargando = false;
+                this.$nextTick(() => {
+                    if (this.$refs.chatBox) this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight;
+                });
+            },
+            async cargarHilos() {
+                try {
+                    const res = await fetch('/vestibulo/hilos');
+                    this.hilos = await res.json();
+                } catch(e) { console.error(e); }
+            },
+            async crearHilo() {
+                if (!this.nuevoTitulo || !this.nuevoContenido || !this.seudonimoGuardado) return;
+                try {
+                    await fetch('/vestibulo/hilos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            titulo: this.nuevoTitulo,
+                            autor: this.seudonimoGuardado,
+                            primer_mensaje: this.nuevoContenido
+                        })
+                    });
+                    this.nuevoTitulo = '';
+                    this.nuevoContenido = '';
+                    this.cargarHilos();
+                } catch(e) { alert("Error al crear hilo"); }
+            },
+            verHilo(id) { window.location.href = `/frontend/hilo.html?id=${id}`; },
+            abrirEnlace(url) { window.open(url, '_blank'); },
+            irARegistro() { window.location.href = '/app/index'; }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

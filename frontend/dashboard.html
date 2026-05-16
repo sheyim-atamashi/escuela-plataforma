@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Espacio</title>
+    <link rel="stylesheet" href="/frontend/css/style.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9/dist/vue-i18n.global.js"></script>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div class="header">
+            <h1>{{ $t('vistas.dashboard_titulo') }}</h1>
+            <div class="user-info">
+                <span>{{ $t('conceptos.nombre') }}: {{ perfil.nombre }}</span>
+                <span>{{ $t('conceptos.nivel_actual') }}: {{ perfil.nivel_actual }}</span>
+                <span>{{ $t('conceptos.ciclo_general') }}: {{ perfil.ciclo_general_actual }}</span>
+                <span>{{ $t('conceptos.rol') }}: {{ perfil.rol }}</span>
+                <button @click="logout">{{ $t('vistas.boton_logout') }}</button>
+            </div>
+            <div class="language-selector">
+                <button @click="setLanguage('es')">🇪🇸 Español</button>
+                <button @click="setLanguage('en')">🇬🇧 English</button>
+                <button @click="setLanguage('zh')">🇨🇳 中文</button>
+            </div>
+        </div>
+
+        <!-- Ciclo actual -->
+        <div class="card">
+            <h2>{{ $t('vistas.ciclo_actual_titulo') }}</h2>
+            <button @click="cargarCiclo">{{ $t('vistas.boton_consultar_ciclo') }}</button>
+            <pre v-if="ciclo">{{ ciclo }}</pre>
+            <button @click="iniciarNuevoCiclo">{{ $t('vistas.boton_iniciar_ciclo') }}</button>
+        </div>
+
+        <!-- Reflexiones -->
+        <div class="card">
+            <h2>{{ $t('vistas.reflexiones_titulo') }}</h2>
+            <select v-model="tipoReflexion">
+                <option value="n1">{{ $t('conceptos.reflexion_n1') }}</option>
+                <option value="n2">{{ $t('conceptos.reflexion_n2') }}</option>
+            </select>
+            <textarea v-model="contenidoReflexion" :placeholder="$t('vistas.contenido_placeholder')"></textarea>
+            <select v-model="formatoReflexion">
+                <option value="text">texto</option>
+                <option value="audio">audio (próximamente)</option>
+                <option value="video">video (próximamente)</option>
+            </select>
+            <button @click="enviarReflexion">{{ $t('vistas.boton_enviar_reflexion') }}</button>
+        </div>
+
+        <!-- Cambiar contraseña -->
+        <div class="card">
+            <h2>{{ $t('vistas.cambiar_password_titulo') }}</h2>
+            <form @submit.prevent="cambiarPassword">
+                <input type="password" v-model="oldPassword" :placeholder="$t('vistas.old_password_placeholder')" required>
+                <input type="password" v-model="newPassword" :placeholder="$t('vistas.new_password_placeholder')" required>
+                <button type="submit">{{ $t('vistas.boton_cambiar_password') }}</button>
+            </form>
+            <div v-if="mensajePassword" class="mensaje" :class="{ error: errorPassword }">{{ mensajePassword }}</div>
+        </div>
+
+        <!-- Críticas recibidas (placeholder) -->
+        <div class="card">
+            <h2>{{ $t('vistas.criticas_recibidas_titulo') }}</h2>
+            <button @click="cargarCriticas">{{ $t('vistas.boton_cargar_criticas') }}</button>
+            <pre v-if="criticas">{{ criticas }}</pre>
+            <div v-if="mensajeCritica" class="mensaje">{{ mensajeCritica }}</div>
+        </div>
+
+        <div v-if="mensaje" class="mensaje">{{ mensaje }}</div>
+    </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/i18n.js"></script>
+<script>
+    const { createApp } = Vue;
+    const { createI18n } = VueI18n;
+    const i18n = createI18n({
+        locale: localStorage.getItem('lang') || 'es',
+        messages: translations
+    });
+
+    createApp({
+        data() {
+            return {
+                perfil: { nombre: '', nivel_actual: 0, ciclo_general_actual: 1, rol: '' },
+                ciclo: null,
+                tipoReflexion: 'n1',
+                contenidoReflexion: '',
+                formatoReflexion: 'text',
+                criticas: null,
+                mensaje: '',
+                mensajeCritica: '',
+                // cambio de contraseña
+                oldPassword: '',
+                newPassword: '',
+                mensajePassword: '',
+                errorPassword: false
+            };
+        },
+        async mounted() {
+            await this.cargarPerfil();
+        },
+        methods: {
+            setLanguage(lang) {
+                i18n.global.locale = lang;
+                localStorage.setItem('lang', lang);
+            },
+            async cargarPerfil() {
+                try {
+                    this.perfil = await apiRequest('/alumno/me');
+                } catch(e) { this.mensaje = e.error; }
+            },
+            async cargarCiclo() {
+                try {
+                    const uuid = localStorage.getItem('user_uuid');
+                    this.ciclo = await apiRequest(`/alumno/${uuid}/ciclo_actual`);
+                } catch(e) { this.ciclo = null; this.mensaje = e.error; }
+            },
+            async iniciarNuevoCiclo() {
+                try {
+                    const uuid = localStorage.getItem('user_uuid');
+                    const resp = await apiRequest(`/alumno/${uuid}/iniciar_ciclo`, 'POST');
+                    this.mensaje = `Ciclo iniciado. ${resp.instrucciones}`;
+                    this.cargarCiclo();
+                } catch(e) { this.mensaje = e.error; }
+            },
+            async enviarReflexion() {
+                if (!this.contenidoReflexion) { this.mensaje = "Escribe algo"; return; }
+                const cicloId = this.ciclo?.id;
+                if (!cicloId) { this.mensaje = "No hay ciclo activo"; return; }
+                const endpoint = this.tipoReflexion === 'n1' ? `/ciclo/${cicloId}/reflexion_n1` : `/ciclo/${cicloId}/reflexion_n2`;
+                try {
+                    const resp = await apiRequest(endpoint, 'POST', { contenido: this.contenidoReflexion, formato: this.formatoReflexion });
+                    this.mensaje = resp.mensaje;
+                    this.contenidoReflexion = '';
+                } catch(e) { this.mensaje = e.error; }
+            },
+            async cargarCriticas() {
+                try {
+                    this.criticas = await apiRequest('/criticas/recibidas');
+                    this.mensajeCritica = '';
+                } catch(e) { this.mensajeCritica = e.error; }
+            },
+            async cambiarPassword() {
+                try {
+                    const resp = await apiRequest('/cambiar_password', 'POST', {
+                        old_password: this.oldPassword,
+                        new_password: this.newPassword
+                    });
+                    this.mensajePassword = resp.mensaje;
+                    this.errorPassword = false;
+                    this.oldPassword = '';
+                    this.newPassword = '';
+                    setTimeout(() => this.mensajePassword = '', 3000);
+                } catch (err) {
+                    this.mensajePassword = err.error || 'Error al cambiar contraseña';
+                    this.errorPassword = true;
+                }
+            },
+            logout() {
+                localStorage.clear();
+                window.location.href = '/app/index';
+            }
+        }
+    }).use(i18n).mount('#app');
+</script>
+</body>
+</html>

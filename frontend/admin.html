@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><title>Admin</title><link rel="stylesheet" href="/frontend/css/style.css"></head>
+<body>
+<div id="app">
+    <h1>Panel de superusuario</h1>
+    <div class="card">
+        <h2>Usuarios nivel 0</h2>
+        <button @click="listarNivel0">Cargar</button>
+        <ul><li v-for="u in usuariosNivel0">{{ u.nombre }} ({{ u.uuid }}) <button @click="asignarRol(u.uuid)">Asignar maestro_preparatorio</button></li></ul>
+    </div>
+    <div class="card">
+        <h2>Asignar maestro fundador</h2>
+        <input v-model="ciudad" placeholder="Ciudad">
+        <input v-model="candidatoUUID" placeholder="UUID del candidato">
+        <button @click="asignarDirecto">Asignación directa</button>
+        <button @click="crearPropuesta">Crear propuesta al consejo</button>
+    </div>
+    <!-- más opciones -->
+</div>
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/i18n.js"></script>
+<script>
+    // Lógica similar usando apiRequest
+</script>
+</body>
+</html>

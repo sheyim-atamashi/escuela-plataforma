@@ -1,0 +1,15 @@
+{
+  "conceptos": {
+    "nivel_actual": "Nivel actual",
+    "ciclo_general": "Ciclo general",
+    "critica_anonima": "Crítica anónima",
+    "anubis": "Anubis",
+    "reflexion_n1": "Reflexión N1 (cruda)",
+    "reflexion_n2": "Reflexión N2 (integrada)"
+  },
+  "vistas": {
+    "login_titulo": "Iniciar sesión",
+    "dashboard_bienvenida": "Bienvenido, {nombre}",
+    "admin_titulo": "Panel de superusuario"
+  }
+}

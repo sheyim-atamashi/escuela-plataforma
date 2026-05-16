@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consejo de los 12</title>
+    <link rel="stylesheet" href="/frontend/css/style.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9/dist/vue-i18n.global.js"></script>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <div class="header">
+            <h1>{{ $t('vistas.consejo_titulo') }}</h1>
+            <div class="user-info">
+                <span>{{ perfil.nombre }}</span>
+                <button @click="logout">{{ $t('vistas.boton_logout') }}</button>
+            </div>
+            <div class="language-selector">
+                <button @click="setLanguage('es')">🇪🇸</button>
+                <button @click="setLanguage('en')">🇬🇧</button>
+                <button @click="setLanguage('zh')">🇨🇳</button>
+            </div>
+        </div>
+
+        <!-- Estado del consejo -->
+        <div class="card">
+            <h2>{{ $t('vistas.estado_consejo') }}</h2>
+            <button @click="cargarEstadoConsejo">{{ $t('vistas.boton_actualizar') }}</button>
+            <div v-if="estadoConsejo.activo">
+                <p><strong>{{ $t('conceptos.fecha_sorteo') }}:</strong> {{ estadoConsejo.fecha_sorteo }}</p>
+                <p><strong>{{ $t('conceptos.miembros') }}:</strong></p>
+                <ul>
+                    <li v-for="m in estadoConsejo.miembros">{{ m.nombre }} ({{ m.uuid }})</li>
+                </ul>
+            </div>
+            <div v-else>
+                <p>{{ $t('vistas.sin_consejo') }}</p>
+                <button v-if="esSuperusuario" @click="generarConsejo">{{ $t('vistas.boton_generar_consejo') }}</button>
+            </div>
+        </div>
+
+        <!-- Propuestas pendientes -->
+        <div class="card" v-if="esSuperusuario || esConsejero">
+            <h2>{{ $t('vistas.propuestas_titulo') }}</h2>
+            <div v-if="esSuperusuario">
+                <h3>{{ $t('vistas.crear_propuesta') }}</h3>
+                <input v-model="nuevaPropuesta.ciudad" placeholder="Ciudad">
+                <input v-model="nuevaPropuesta.candidato_uuid" placeholder="UUID del candidato">
+                <button @click="crearPropuesta">{{ $t('vistas.boton_crear_propuesta') }}</button>
+            </div>
+            <div v-if="propuestasPendientes.length">
+                <div v-for="p in propuestasPendientes" class="propuesta">
+                    <p><strong>{{ $t('conceptos.propuesta_id') }}:</strong> {{ p.id }}</p>
+                    <p><strong>{{ $t('conceptos.ciudad') }}:</strong> {{ p.ciudad_destino }}</p>
+                    <p><strong>{{ $t('conceptos.candidato') }}:</strong> {{ p.candidato_nombre }}</p>
+                    <p><strong>{{ $t('conceptos.votos_favor') }}:</strong> {{ p.votos_favor }} / {{ $t('conceptos.votos_contra') }}: {{ p.votos_contra }}</p>
+                    <div v-if="esConsejero && p.estado === 'pendiente'">
+                        <button @click="votar(p.id, true)">{{ $t('vistas.voto_favor') }}</button>
+                        <button @click="votar(p.id, false)">{{ $t('vistas.voto_contra') }}</button>
+                    </div>
+                </div>
+            </div>
+            <div v-else>
+                <p>{{ $t('vistas.sin_propuestas') }}</p>
+            </div>
+        </div>
+
+        <div v-if="mensaje" class="mensaje" :class="{ error: errorMsg }">{{ mensaje }}</div>
+    </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/i18n.js"></script>
+<script>
+    const { createApp } = Vue;
+    const { createI18n } = VueI18n;
+    const i18n = createI18n({ locale: localStorage.getItem('lang') || 'es', messages: translations });
+
+    createApp({
+        data() {
+            return {
+                perfil: { nombre: '', rol: '' },
+                esSuperusuario: false,
+                esConsejero: false,
+                estadoConsejo: { activo: false, miembros: [], fecha_sorteo: '' },
+                propuestasPendientes: [],
+                nuevaPropuesta: { ciudad: '', candidato_uuid: '' },
+                mensaje: '',
+                errorMsg: false
+            };
+        },
+        async mounted() {
+            await this.cargarPerfil();
+            await this.cargarEstadoConsejo();
+            if (this.esSuperusuario || this.esConsejero) {
+                await this.cargarPropuestas();
+            }
+        },
+        methods: {
+            setLanguage(lang) {
+                i18n.global.locale = lang;
+                localStorage.setItem('lang', lang);
+            },
+            async cargarPerfil() {
+                try {
+                    this.perfil = await apiRequest('/alumno/me');
+                    this.esSuperusuario = (this.perfil.rol === 'superusuario');
+                    // Comprobar si es miembro del consejo (se obtiene desde el estado)
+                } catch(e) { this.mostrarError(e.error); }
+            },
+            async cargarEstadoConsejo() {
+                try {
+                    const resp = await apiRequest('/admin/consejo/estado');
+                    this.estadoConsejo = resp;
+                    // Si el usuario está en la lista de miembros, es consejero
+                    if (resp.activo && resp.miembros) {
+                        this.esConsejero = resp.miembros.some(m => m.uuid === localStorage.getItem('user_uuid'));
+                    }
+                } catch(e) {
+                    this.estadoConsejo = { activo: false };
+                    if (e.error !== 'No hay consejo activo') this.mostrarError(e.error);
+                }
+            },
+            async generarConsejo() {
+                try {
+                    const resp = await apiRequest('/admin/consejo/generar', 'POST');
+                    this.mensaje = `Consejo generado con ${resp.miembros.length} miembros.`;
+                    await this.cargarEstadoConsejo();
+                } catch(e) { this.mostrarError(e.error); }
+            },
+            async cargarPropuestas() {
+                try {
+                    // Necesitamos un endpoint que liste propuestas pendientes (aún no existe en app.py)
+                    // Por ahora, simulamos con un array vacío; luego implementamos /admin/consejo/propuestas/pendientes
+                    this.propuestasPendientes = [];
+                } catch(e) { this.mostrarError(e.error); }
+            },
+            async crearPropuesta() {
+                if (!this.nuevaPropuesta.ciudad || !this.nuevaPropuesta.candidato_uuid) {
+                    this.mostrarError('Completa ciudad y UUID del candidato');
+                    return;
+                }
+                try {
+                    const resp = await apiRequest('/admin/consejo/propuesta', 'POST', {
+                        ciudad: this.nuevaPropuesta.ciudad,
+                        candidato_uuid: this.nuevaPropuesta.candidato_uuid
+                    });
+                    this.mensaje = resp.mensaje;
+                    this.nuevaPropuesta = { ciudad: '', candidato_uuid: '' };
+                    await this.cargarPropuestas();
+                } catch(e) { this.mostrarError(e.error); }
+            },
+            async votar(propuestaId, voto) {
+                try {
+                    const resp = await apiRequest('/admin/consejo/votar', 'POST', { propuesta_id: propuestaId, voto });
+                    this.mensaje = resp.mensaje;
+                    await this.cargarPropuestas();
+                } catch(e) { this.mostrarError(e.error); }
+            },
+            mostrarError(msg) {
+                this.mensaje = msg;
+                this.errorMsg = true;
+                setTimeout(() => { this.mensaje = ''; this.errorMsg = false; }, 5000);
+            },
+            logout() {
+                localStorage.clear();
+                window.location.href = '/app/index';
+            }
+        }
+    }).use(i18n).mount('#app');
+</script>
+</body>
+</html>
