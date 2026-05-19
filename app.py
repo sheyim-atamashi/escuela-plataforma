@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 import sqlite3
+import request
 
 load_dotenv()
 app = Flask(__name__)
@@ -818,26 +819,34 @@ def iniciar_ciclo_self():
     nuevo_ciclo = db.execute("SELECT * FROM learning_cycles WHERE id = ?", (cursor.lastrowid,)).fetchone()
     return jsonify({'mensaje': 'Ciclo iniciado', 'ciclo': dict(nuevo_ciclo), 'instrucciones': f'Toma un ducto a {maestro["zona_actual"]}. Te espera en 10 minutos.'}), 201
 
+@app.route('/hermes/chat', methods=['POST'])
 # =====================================================
-# BLOQUE HERMES - VESTÍBULO Y ADMINISTRACIÓN
+# FUNCIONES AUXILIARES PARA HERMES
 # =====================================================
-# Dependencias adicionales (si no están, instalar con pip)
-import requests
-import json
-from functools import wraps
 
-# ------------------- FUNCIONES DE BÚSQUEDA PARA HERMES -------------------
 def buscar_faq(mensaje, db):
+    mensaje = mensaje.lower()
     rows = db.execute("SELECT palabras_clave, respuesta FROM respuestas_estandar WHERE activa=1").fetchall()
     best = None
     max_coinc = 0
     for r in rows:
         claves = [k.strip().lower() for k in r['palabras_clave'].split(',')]
-        coinc = sum(1 for k in claves if k in mensaje)
+        coinc = 0
+        for k in claves:
+            if k in mensaje:
+                coinc += 1
+        print(f"DEBUG FAQ: claves={claves}, coinc={coinc}, respuesta={r['respuesta'][:50]}")
         if coinc > max_coinc:
             max_coinc = coinc
             best = r['respuesta']
-    return best if max_coinc >= 1 else None
+    print(f"DEBUG FAQ RESULT: max_coinc={max_coinc}, best={best[:50] if best else None}")
+    # Si no hay coincidencia, devolver None
+    if max_coinc == 0:
+        return None
+    return best
+    
+faq = buscar_faq(user_message, db)
+print(f"FAQ devuelto: {faq}")
 
 def buscar_cita(mensaje, db):
     rows = db.execute("SELECT autor, cita, palabras_clave FROM citas_celebres WHERE activa=1").fetchall()
@@ -864,15 +873,8 @@ def buscar_parabola(mensaje, db):
     return best if max_coinc >= 1 else None
 
 def buscar_dialectica(mensaje, db, nivel_visitante=0, contexto='general'):
-    """
-    Busca en ensenanza_dialectica la mejor coincidencia de palabras clave,
-    filtrando por:
-    - activo=1, aprobado=1
-    - nivel_asociado <= nivel_visitante
-    - contexto_cultural = contexto del visitante o 'general'
-    """
     query = """
-        SELECT id, ejemplo_dialectico, pregunta, palabras_clave, contexto_cultural, nivel_asociado
+        SELECT id, ejemplo_dialectico, pregunta, palabras_clave
         FROM ensenanza_dialectica
         WHERE activo=1 AND aprobado=1 
           AND nivel_asociado <= ?
@@ -890,428 +892,113 @@ def buscar_dialectica(mensaje, db, nivel_visitante=0, contexto='general'):
             best = r
     return best if max_coinc >= 1 else None
 
-# ========== NUEVAS FUNCIONES PARA MEMORIA Y CICLO ENEAGRAMÁTICO ==========
-import uuid
+def buscar_eneagrama(mensaje, db):
+    # Mapeo simple de palabras a tipos
+    map_tipo = {
+        'error': 1, 'crítica': 1, 'crítico': 1, 'perfecto': 1, 'fallo': 1,
+        'ayudar': 2, 'servicio': 2, 'necesito': 2, 'necesidad': 2,
+        'éxito': 3, 'logro': 3, 'resultado': 3, 'meta': 3, 'competir': 3,
+        'auténtico': 4, 'identidad': 4, 'sentir': 4, 'único': 4, 'emociones': 4,
+        'saber': 5, 'conocimiento': 5, 'observar': 5, 'analizar': 5, 'teoría': 5,
+        'miedo': 6, 'seguridad': 6, 'duda': 6, 'riesgo': 6, 'precaución': 6,
+        'libertad': 7, 'opciones': 7, 'escapar': 7, 'aburrido': 7, 'aventura': 7,
+        'control': 8, 'poder': 8, 'fuerza': 8, 'proteger': 8, 'dominar': 8,
+        'paz': 9, 'armonía': 9, 'evitar': 9, 'confort': 9, 'tranquilo': 9
+    }
+    mensaje_lower = mensaje.lower()
+    tipo = None
+    for palabra, t in map_tipo.items():
+        if palabra in mensaje_lower:
+            tipo = t
+            break
+    if tipo is None:
+        import random
+        tipo = random.randint(1, 9)
+    respuesta = db.execute(
+        "SELECT respuesta FROM respuestas_eneagrama WHERE tipo = ? AND activa = 1 ORDER BY RANDOM() LIMIT 1",
+        (tipo,)
+    ).fetchone()
+    return respuesta['respuesta'] if respuesta else None
 
-def obtener_usuario_id(session, seudonimo=None):
-    if 'user_uuid' in session:
-        return session['user_uuid']
-    else:
-        # Si viene un seudónimo, lo usamos para identificar al anónimo
-        if seudonimo and seudonimo.strip():
-            return f"anon_{seudonimo.strip()}"
-        else:
-            if 'session_id' not in session:
-                session['session_id'] = str(uuid.uuid4())
-            return f"anon_{session['session_id']}"
+def generar_con_modelo(mensaje):
+    # Si no quieres usar Ollama aún, comenta esta función y usa un fallback
+    # Por ahora, devolvemos un mensaje genérico
+    return "Soy Hermes. Si quieres respuestas más profundas, cruza la puerta y regístrate en la Escuela."
 
-def registrar_pregunta(usuario_id, pregunta, db):
-    db.execute("INSERT INTO memoria_preguntas (usuario_id, pregunta) VALUES (?, ?)", (usuario_id, pregunta))
-    # Mantener solo las últimas 5 preguntas por usuario
-    db.execute("""
-        DELETE FROM memoria_preguntas 
-        WHERE id IN (
-            SELECT id FROM memoria_preguntas 
-            WHERE usuario_id = ? 
-            ORDER BY fecha DESC 
-            LIMIT -1 OFFSET 5
-        )
-    """, (usuario_id,))
-    db.commit()
+# =====================================================
+# ENDPOINT DEL CHAT
+# =====================================================
 
-def es_pregunta_repetida(usuario_id, pregunta, db):
-    rows = db.execute(
-        "SELECT pregunta FROM memoria_preguntas WHERE usuario_id = ? ORDER BY fecha DESC LIMIT 5",
-        (usuario_id,)
-    ).fetchall()
-    for r in rows:
-        if r['pregunta'].strip().lower() == pregunta.strip().lower():
-            return True
-    return False
-
-def obtener_ciclo_actual(db):
-    row = db.execute("SELECT ciclo_eneagrama FROM estado_hermes WHERE id = 1").fetchone()
-    if not row:
-        db.execute("INSERT INTO estado_hermes (id, ciclo_eneagrama) VALUES (1, 1)")
-        db.commit()
-        return 1
-    return row['ciclo_eneagrama']
-
-def avanzar_ciclo(db):
-    actual = obtener_ciclo_actual(db)
-    siguiente = actual + 1 if actual < 9 else 1
-    db.execute("UPDATE estado_hermes SET ciclo_eneagrama = ? WHERE id = 1", (siguiente,))
-    db.commit()
-
-def aplicar_estilo_eneagrama(respuesta_base, tipo, db):
-    estilo = db.execute("SELECT prefacio, sufijo_pregunta FROM estilos_eneagrama WHERE tipo = ?", (tipo,)).fetchone()
-    if not estilo:
-        return respuesta_base
-    # Si la respuesta base ya tiene una pregunta al final, la reemplazamos
-    if respuesta_base.strip().endswith('?'):
-        partes = respuesta_base.rsplit('?', 1)
-        contenido = partes[0].strip()
-    else:
-        contenido = respuesta_base
-    nueva = f"{estilo['prefacio']} {contenido}. {estilo['sufijo_pregunta']}"
-    return nueva.strip()
-    
-# ------------------- ENDPOINT PRINCIPAL DEL CHAT -------------------
 @app.route('/hermes/chat', methods=['POST'])
 def chat_hermes():
     data = request.get_json()
     user_message = data.get('mensaje', '').strip().lower()
-    seudonimo = data.get('seudonimo', '')
-    usuario_id = obtener_usuario_id(session, seudonimo)
-    if not user_message:
-        return jsonify({'error': 'Mensaje vacío'}), 400
-
     contexto = data.get('contexto', 'es')
     session['contexto_cultural'] = contexto
 
-    db = get_db()
+    print(f"📩 Mensaje: {user_message} | Contexto: {contexto}")
 
-    # Determinar nivel del visitante
+    db = get_db()
+    nivel_visitante = 0
     if 'user_uuid' in session:
         user = db.execute("SELECT nivel_actual FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
         nivel_visitante = user['nivel_actual'] if user else 0
-    else:
-        nivel_visitante = 0
 
-    # 1. Dosificación (si la última respuesta fue larga)
+    # Dosificación
     if session.get('ultima_larga', False):
         session['ultima_larga'] = False
-        return jsonify({'respuesta': "Una idea basta por hoy. ¿Prefieres seguir aquí o cruzar la puerta para la práctica?"})
+        return jsonify({'respuesta': "Una idea basta por hoy. ¿Cruzas la puerta para la práctica?"})
 
-    # 2. Verificar repetición (usando memoria)
-    if es_pregunta_repetida(usuario_id, user_message, db):
-        criticas = [
-            "Ya me lo has preguntado. Buscas lo mismo y esperas respuestas distintas. ¿Qué cambio real estás dispuesto a hacer hoy?",
-            "Otra vez la misma pregunta… Tus palabras se repiten, pero tus acciones no. ¿Cuándo pasarás del dicho al hecho?",
-            "Esa pregunta ya la hiciste. La respuesta no ha cambiado. ¿Has cambiado tú?",
-            "Repites la pregunta porque la respuesta no te satisface. ¿Será que la respuesta está en hacer, no en preguntar?",
-            "¿Esperas una respuesta diferente a la misma pregunta? La Escuela no da respuestas mágicas, sino espejos. ¿Has mirado el tuyo?"
-        ]
-        import random
-        respuesta_base = random.choice(criticas)
-        # Aplicar estilo eneagramático aleatorio (no avanza ciclo)
-        tipo_enea = random.randint(1, 9)
-        respuesta_final = aplicar_estilo_eneagrama(respuesta_base, tipo_enea, db)
-        if len(respuesta_final) > 200:
+    # 1. FAQ
+    faq = buscar_faq(user_message, db)
+    if faq:
+        if len(faq) > 250 or faq.count('.') > 2:
             session['ultima_larga'] = True
-        return jsonify({'respuesta': respuesta_final})
+        return jsonify({'respuesta': faq})
 
-    # Registrar pregunta nueva (no repetida)
-    registrar_pregunta(usuario_id, user_message, db)
+    # 2. Eneagrama
+    enea = buscar_eneagrama(user_message, db)
+    if enea:
+        return jsonify({'respuesta': enea})
 
-    # 3. Buscar respuesta base (temas recurrentes, citas, parábolas, dialéctica)
-    respuesta_base = None
-
-    # a) Temas recurrentes (FAQ)
-    tema = buscar_faq(user_message, db)
-    if tema:
-        respuesta_base = tema
-    else:
-        # b) Citas
-        cita = buscar_cita(user_message, db)
-        if cita:
-            respuesta_base = f"{cita['autor']} dijo: \"{cita['cita']}\". Para digerirlo necesitas hechos, no más palabras. ¿Te animas a una experiencia concreta en la Escuela?"
-        else:
-            # c) Parábolas
-            parabola = buscar_parabola(user_message, db)
-            if parabola:
-                respuesta_base = parabola + " ¿Quieres entender por qué esto se aplica a tu vida? Regístrate y te lo mostramos con hechos."
-            else:
-                # d) Dialéctica (con manejo de pendiente)
-                dialectica = buscar_dialectica(user_message, db, nivel_visitante, contexto)
-                if dialectica:
-                    respuesta_base = f"{dialectica['ejemplo_dialectico']}\n\n{dialectica['pregunta']}"
-                    session['pendiente_dialectica'] = dialectica['id']
-                else:
-                    pendiente = session.get('pendiente_dialectica')
-                    if pendiente:
-                        dialectica_resp = db.execute("SELECT respuesta FROM ensenanza_dialectica WHERE id = ?", (pendiente,)).fetchone()
-                        session.pop('pendiente_dialectica', None)
-                        if dialectica_resp and dialectica_resp['respuesta']:
-                            respuesta_base = dialectica_resp['respuesta'] + " ¿Descubrirás más si te registras?"
-                        else:
-                            respuesta_base = "La respuesta está dentro de ti. La Escuela te ayuda a encontrarla. ¿Te atreves a entrar?"
-                    else:
-                        # e) Fallback propio (sin Ollama)
-                        fallbacks = [
-                            "Tu pregunta es profunda. Demasiado para el vestíbulo. Dentro de la Escuela hay prácticas que la responderán con hechos, no palabras. ¿Te animas a entrar?",
-                            "El mensajero no puede revelar más aquí. La puerta está abierta. Dentro encontrarás ejercicios que aclaran lo que ahora preguntas.",
-                            "Esa es una cuestión que requiere experiencia, no explicación. ¿Te atreves a dar el primer paso y registrarte?",
-                            "No tengo una respuesta completa para eso. Pero dentro de la Escuela hay caminos que te mostrarán. ¿Quieres recorrer uno?",
-                            "Tu curiosidad es la llave. ¿Quieres usarla para abrir la puerta del nivel 1?"
-                        ]
-                        import random
-                        respuesta_base = random.choice(fallbacks)
-
-    # 4. Aplicar estilo eneagramático rotatorio (solo a respuestas que no son críticas)
-    ciclo_actual = obtener_ciclo_actual(db)
-    respuesta_final = aplicar_estilo_eneagrama(respuesta_base, ciclo_actual, db)
-    avanzar_ciclo(db)
-
-    # 5. Dosificación por longitud
-    if len(respuesta_final) > 200:
+    # 3. Citas
+    cita = buscar_cita(user_message, db)
+    if cita:
+        respuesta = f"{cita['autor']} dijo: \"{cita['cita']}\". ¿Te animas a una experiencia concreta en la Escuela?"
         session['ultima_larga'] = True
+        return jsonify({'respuesta': respuesta})
 
-    return jsonify({'respuesta': respuesta_final})
+    # 4. Parábolas
+    parabola = buscar_parabola(user_message, db)
+    if parabola:
+        respuesta = parabola + " ¿Quieres entender por qué esto se aplica a tu vida? Regístrate."
+        if len(respuesta) > 200:
+            session['ultima_larga'] = True
+        return jsonify({'respuesta': respuesta})
+
+    # 5. Dialéctica (con respuesta pendiente)
+    dialectica = buscar_dialectica(user_message, db, nivel_visitante, contexto)
+    if dialectica:
+        respuesta = f"{dialectica['ejemplo_dialectico']}\n\n{dialectica['pregunta']}"
+        session['pendiente_dialectica'] = dialectica['id']
+        session['ultima_larga'] = True
+        return jsonify({'respuesta': respuesta})
+
+    pendiente = session.get('pendiente_dialectica')
+    if pendiente:
+        dialectica_resp = db.execute("SELECT respuesta FROM ensenanza_dialectica WHERE id = ?", (pendiente,)).fetchone()
+        session.pop('pendiente_dialectica', None)
+        if dialectica_resp and dialectica_resp['respuesta']:
+            return jsonify({'respuesta': dialectica_resp['respuesta'] + " ¿Descubrirás más si te registras?"})
+        else:
+            return jsonify({'respuesta': "La respuesta está dentro de ti. ¿Te atreves a entrar?"})
+
+    # 6. Generación con modelo (fallback)
+    respuesta_generada = generar_con_modelo(user_message)
+    if len(respuesta_generada) > 200:
+        session['ultima_larga'] = True
+    return jsonify({'respuesta': respuesta_generada})
     
-# ------------------- ENDPOINT PARA MAESTROS (APORTAR DIALÉCTICA) -------------------
-@app.route('/maestro/dialectica', methods=['POST'])
-@login_required
-def maestro_crear_dialectica():
-    db = get_db()
-    usuario = db.execute("SELECT uuid, nivel_actual, ciclos_completados, contexto_cultural FROM beings WHERE uuid = ?", 
-                         (session['user_uuid'],)).fetchone()
-    if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
-    if usuario['ciclos_completados'] < 1 and usuario['nivel_actual'] <= 1:
-        return jsonify({'error': 'Solo maestros con ciclo superior a 1 pueden aportar conceptos'}), 403
-
-    data = request.get_json()
-    required = ['concepto', 'ejemplo_dialectico', 'pregunta', 'palabras_clave']
-    if not all(k in data for k in required):
-        return jsonify({'error': f'Faltan campos: {required}'}), 400
-
-    contexto = data.get('contexto_cultural') or usuario['contexto_cultural'] or 'general'
-    cursor = db.execute("""
-        INSERT INTO ensenanza_dialectica 
-        (concepto, ejemplo_dialectico, pregunta, respuesta, palabras_clave, 
-         nivel_asociado, tradicion, es_canonico, creado_por_uuid, contexto_cultural, aprobado)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1)
-    """, (data['concepto'], data['ejemplo_dialectico'], data['pregunta'], data.get('respuesta'),
-          data['palabras_clave'], data.get('nivel_asociado', 0), data.get('tradicion'),
-          session['user_uuid'], contexto))
-    db.commit()
-    return jsonify({'id': cursor.lastrowid, 'mensaje': 'Concepto dialéctico añadido. Quedará visible para visitantes de tu contexto cultural.'})
-
-# ------------------- ADMIN CRUD: RESPUESTAS ESTÁNDAR (FAQ) -------------------
-@app.route('/admin/faq', methods=['GET'])
-@superusuario_required
-def listar_faq():
-    db = get_db()
-    rows = db.execute("SELECT id, palabras_clave, respuesta, activa, es_canonico, tradicion FROM respuestas_estandar ORDER BY es_canonico DESC, id DESC").fetchall()
-    return jsonify([dict(r) for r in rows])
-
-@app.route('/admin/faq', methods=['POST'])
-@superusuario_required
-def crear_faq():
-    data = request.get_json()
-    if not data.get('palabras_clave') or not data.get('respuesta'):
-        return jsonify({'error': 'palabras_clave y respuesta requeridos'}), 400
-    db = get_db()
-    cursor = db.execute(
-        "INSERT INTO respuestas_estandar (palabras_clave, respuesta, tradicion, es_canonico) VALUES (?, ?, ?, 0)",
-        (data['palabras_clave'], data['respuesta'], data.get('tradicion'))
-    )
-    db.commit()
-    return jsonify({'id': cursor.lastrowid, 'mensaje': 'FAQ creada'})
-
-@app.route('/admin/faq/<int:id>', methods=['PUT'])
-@superusuario_required
-def actualizar_faq(id):
-    data = request.get_json()
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM respuestas_estandar WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede modificar una respuesta canónica'}), 403
-    db.execute("""
-        UPDATE respuestas_estandar 
-        SET palabras_clave = COALESCE(?, palabras_clave),
-            respuesta = COALESCE(?, respuesta),
-            activa = COALESCE(?, activa),
-            tradicion = COALESCE(?, tradicion)
-        WHERE id = ?
-    """, (data.get('palabras_clave'), data.get('respuesta'), data.get('activa'), data.get('tradicion'), id))
-    db.commit()
-    return jsonify({'mensaje': 'FAQ actualizada'})
-
-@app.route('/admin/faq/<int:id>', methods=['DELETE'])
-@superusuario_required
-def eliminar_faq(id):
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM respuestas_estandar WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede eliminar una respuesta canónica'}), 403
-    db.execute("DELETE FROM respuestas_estandar WHERE id = ?", (id,))
-    db.commit()
-    return jsonify({'mensaje': 'FAQ eliminada'})
-
-# ------------------- ADMIN CRUD: CITAS CÉLEBRES -------------------
-@app.route('/admin/citas', methods=['GET'])
-@superusuario_required
-def listar_citas():
-    db = get_db()
-    rows = db.execute("SELECT id, autor, cita, palabras_clave, tradicion, es_canonico, activa FROM citas_celebres ORDER BY es_canonico DESC").fetchall()
-    return jsonify([dict(r) for r in rows])
-
-@app.route('/admin/citas', methods=['POST'])
-@superusuario_required
-def crear_cita():
-    data = request.get_json()
-    if not all(k in data for k in ('autor', 'cita', 'palabras_clave')):
-        return jsonify({'error': 'autor, cita y palabras_clave requeridos'}), 400
-    db = get_db()
-    cursor = db.execute(
-        "INSERT INTO citas_celebres (autor, cita, palabras_clave, tradicion, es_canonico) VALUES (?, ?, ?, ?, 0)",
-        (data['autor'], data['cita'], data['palabras_clave'], data.get('tradicion'))
-    )
-    db.commit()
-    return jsonify({'id': cursor.lastrowid, 'mensaje': 'Cita creada'})
-
-@app.route('/admin/citas/<int:id>', methods=['PUT'])
-@superusuario_required
-def actualizar_cita(id):
-    data = request.get_json()
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM citas_celebres WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede modificar una cita canónica'}), 403
-    db.execute("""
-        UPDATE citas_celebres 
-        SET autor = COALESCE(?, autor),
-            cita = COALESCE(?, cita),
-            palabras_clave = COALESCE(?, palabras_clave),
-            tradicion = COALESCE(?, tradicion),
-            activa = COALESCE(?, activa)
-        WHERE id = ?
-    """, (data.get('autor'), data.get('cita'), data.get('palabras_clave'), data.get('tradicion'), data.get('activa'), id))
-    db.commit()
-    return jsonify({'mensaje': 'Cita actualizada'})
-
-@app.route('/admin/citas/<int:id>', methods=['DELETE'])
-@superusuario_required
-def eliminar_cita(id):
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM citas_celebres WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede eliminar una cita canónica'}), 403
-    db.execute("DELETE FROM citas_celebres WHERE id = ?", (id,))
-    db.commit()
-    return jsonify({'mensaje': 'Cita eliminada'})
-
-# ------------------- ADMIN CRUD: PARÁBOLAS -------------------
-@app.route('/admin/parabolas', methods=['GET'])
-@superusuario_required
-def listar_parabolas():
-    db = get_db()
-    rows = db.execute("SELECT id, palabras_clave, parabola, tradicion, es_canonico, activa FROM parabolas_hermes ORDER BY es_canonico DESC").fetchall()
-    return jsonify([dict(r) for r in rows])
-
-@app.route('/admin/parabolas', methods=['POST'])
-@superusuario_required
-def crear_parabola():
-    data = request.get_json()
-    if not all(k in data for k in ('palabras_clave', 'parabola')):
-        return jsonify({'error': 'palabras_clave y parabola requeridos'}), 400
-    db = get_db()
-    cursor = db.execute(
-        "INSERT INTO parabolas_hermes (palabras_clave, parabola, tradicion, es_canonico) VALUES (?, ?, ?, 0)",
-        (data['palabras_clave'], data['parabola'], data.get('tradicion'))
-    )
-    db.commit()
-    return jsonify({'id': cursor.lastrowid, 'mensaje': 'Parábola creada'})
-
-@app.route('/admin/parabolas/<int:id>', methods=['PUT'])
-@superusuario_required
-def actualizar_parabola(id):
-    data = request.get_json()
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM parabolas_hermes WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede modificar una parábola canónica'}), 403
-    db.execute("""
-        UPDATE parabolas_hermes 
-        SET palabras_clave = COALESCE(?, palabras_clave),
-            parabola = COALESCE(?, parabola),
-            tradicion = COALESCE(?, tradicion),
-            activa = COALESCE(?, activa)
-        WHERE id = ?
-    """, (data.get('palabras_clave'), data.get('parabola'), data.get('tradicion'), data.get('activa'), id))
-    db.commit()
-    return jsonify({'mensaje': 'Parábola actualizada'})
-
-@app.route('/admin/parabolas/<int:id>', methods=['DELETE'])
-@superusuario_required
-def eliminar_parabola(id):
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM parabolas_hermes WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede eliminar una parábola canónica'}), 403
-    db.execute("DELETE FROM parabolas_hermes WHERE id = ?", (id,))
-    db.commit()
-    return jsonify({'mensaje': 'Parábola eliminada'})
-
-# ------------------- ADMIN CRUD: ENSEÑANZA DIALÉCTICA -------------------
-@app.route('/admin/dialectica', methods=['GET'])
-@superusuario_required
-def listar_dialectica():
-    db = get_db()
-    rows = db.execute("""
-        SELECT id, concepto, ejemplo_dialectico, pregunta, respuesta, palabras_clave, 
-               nivel_asociado, tradicion, es_canonico, activo, veces_usada, contexto_cultural
-        FROM ensenanza_dialectica 
-        ORDER BY es_canonico DESC, id DESC
-    """).fetchall()
-    return jsonify([dict(r) for r in rows])
-
-@app.route('/admin/dialectica', methods=['POST'])
-@superusuario_required
-def crear_dialectica():
-    data = request.get_json()
-    required = ['concepto', 'ejemplo_dialectico', 'pregunta', 'palabras_clave']
-    if not all(k in data for k in required):
-        return jsonify({'error': f'Faltan campos: {required}'}), 400
-    db = get_db()
-    cursor = db.execute("""
-        INSERT INTO ensenanza_dialectica 
-        (concepto, ejemplo_dialectico, pregunta, respuesta, palabras_clave, nivel_asociado, tradicion, contexto_cultural, es_canonico)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-    """, (data['concepto'], data['ejemplo_dialectico'], data['pregunta'], data.get('respuesta'),
-          data['palabras_clave'], data.get('nivel_asociado', 0), data.get('tradicion'), data.get('contexto_cultural')))
-    db.commit()
-    return jsonify({'id': cursor.lastrowid, 'mensaje': 'Entrada dialéctica creada'})
-
-@app.route('/admin/dialectica/<int:id>', methods=['PUT'])
-@superusuario_required
-def actualizar_dialectica(id):
-    data = request.get_json()
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM ensenanza_dialectica WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede modificar una entrada canónica'}), 403
-    db.execute("""
-        UPDATE ensenanza_dialectica 
-        SET concepto = COALESCE(?, concepto),
-            ejemplo_dialectico = COALESCE(?, ejemplo_dialectico),
-            pregunta = COALESCE(?, pregunta),
-            respuesta = COALESCE(?, respuesta),
-            palabras_clave = COALESCE(?, palabras_clave),
-            nivel_asociado = COALESCE(?, nivel_asociado),
-            tradicion = COALESCE(?, tradicion),
-            contexto_cultural = COALESCE(?, contexto_cultural),
-            activo = COALESCE(?, activo)
-        WHERE id = ?
-    """, (data.get('concepto'), data.get('ejemplo_dialectico'), data.get('pregunta'), data.get('respuesta'),
-          data.get('palabras_clave'), data.get('nivel_asociado'), data.get('tradicion'), data.get('contexto_cultural'),
-          data.get('activo'), id))
-    db.commit()
-    return jsonify({'mensaje': 'Entrada actualizada'})
-
-@app.route('/admin/dialectica/<int:id>', methods=['DELETE'])
-@superusuario_required
-def eliminar_dialectica(id):
-    db = get_db()
-    canonico = db.execute("SELECT es_canonico FROM ensenanza_dialectica WHERE id = ?", (id,)).fetchone()
-    if canonico and canonico['es_canonico'] == 1:
-        return jsonify({'error': 'No se puede eliminar una entrada canónica'}), 403
-    db.execute("DELETE FROM ensenanza_dialectica WHERE id = ?", (id,))
-    db.commit()
-    return jsonify({'mensaje': 'Entrada eliminada'})
-        
 # ------------------- FORO DEL VESTÍBULO -------------------
 @app.route('/vestibulo/hilos', methods=['GET'])
 def vestibulo_hilos():
@@ -1339,6 +1026,11 @@ def vestibulo_mensajes(hilo_id):
 def frontend_root():
     return send_from_directory('frontend', 'index.html')    
 
+@app.route('/crear_tablas')
+def crear_tablas():
+    from app import init_db
+    init_db()
+    return "Tablas creadas (o ya existían). Ahora elimina este endpoint."
 
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
