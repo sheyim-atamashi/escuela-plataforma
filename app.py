@@ -5,12 +5,12 @@ import json
 import random
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, jsonify, request, session, g, send_from_directory  # ← aquí está
+from flask import Flask, jsonify, requests, session, g, send_from_directory  # ← aquí está
 from dotenv import load_dotenv
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 import sqlite3
-import request
+import requests
 
 load_dotenv()
 app = Flask(__name__)
@@ -261,8 +261,8 @@ def init_db():
             cursor.execute('INSERT OR IGNORE INTO niveles (id, center_code, center_part, name) VALUES (?, ?, ?, ?)', nivel)
         conn.commit()
 
-@app.before_request
-def before_request():
+@app.before_requests
+def before_requests():
     g.db = get_db()
     verificar_inactividad_superusuario()
 
@@ -309,7 +309,7 @@ def contar_maestros_calificados():
 # ------------------- AUTENTICACIÓN -------------------
 @app.route('/registro', methods=['POST'])
 def registro():
-    data = request.get_json()
+    data = requests.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
     if not nombre or not password:
@@ -325,7 +325,7 @@ def registro():
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
+    data = requests.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
     db = get_db()
@@ -358,7 +358,7 @@ def crear_superusuario_inicial():
     db = get_db()
     if db.execute("SELECT id FROM superusuario_control").fetchone():
         return jsonify({'error': 'Superusuario ya existe'}), 409
-    data = request.get_json()
+    data = requests.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
     if not nombre or not password:
@@ -394,7 +394,7 @@ def asignar_rol(uuid):
     if destino['rol'] == 'superusuario':
         return jsonify({'error': 'No puedes modificar el rol de otro superusuario'}), 403
 
-    data = request.get_json()
+    data = requests.get_json()
     nuevo_rol = data.get('rol')
 
     # 4. No permitir asignar el rol 'superusuario' mediante este endpoint
@@ -426,7 +426,7 @@ def recuperar_clave_emergencia():
 @app.route('/respaldar', methods=['POST'])
 @login_required
 def respaldar():
-    data = request.get_json()
+    data = requests.get_json()
     password = data.get('password')
     backup_data = data.get('backup_data', {})
     if not password:
@@ -445,7 +445,7 @@ def respaldar():
 @app.route('/restaurar', methods=['POST'])
 @login_required
 def restaurar():
-    data = request.get_json()
+    data = requests.get_json()
     password = data.get('password')
     db = get_db()
     user = db.execute("SELECT backup_url, password_hash FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
@@ -492,7 +492,7 @@ def estado_consejo():
 def crear_propuesta():
     if contar_maestros_calificados() < 12:
         return jsonify({'error': 'Aún no hay suficientes maestros calificados para consejo. Usa /admin/maestro_fundador/asignar_directo'}), 403
-    data = request.get_json()
+    data = requests.get_json()
     ciudad = data.get('ciudad')
     candidato_uuid = data.get('candidato_uuid')
     if not ciudad or not candidato_uuid:
@@ -519,7 +519,7 @@ def crear_propuesta():
 @app.route('/admin/consejo/votar', methods=['POST'])
 @login_required
 def votar():
-    data = request.get_json()
+    data = requests.get_json()
     propuesta_id = data.get('propuesta_id')
     voto = data.get('voto')
     if propuesta_id is None or voto is None:
@@ -569,7 +569,7 @@ def votar():
 def asignar_maestro_fundador_directo():
     if contar_maestros_calificados() >= 12:
         return jsonify({'error': 'Ya hay suficientes maestros calificados. Debes usar el Consejo de los 12.'}), 403
-    data = request.get_json()
+    data = requests.get_json()
     ciudad = data.get('ciudad')
     candidato_uuid = data.get('candidato_uuid')
     if not ciudad or not candidato_uuid:
@@ -587,7 +587,7 @@ def asignar_maestro_fundador_directo():
 @app.route('/admin/registrar_androide', methods=['POST'])
 @superusuario_required
 def registrar_androide():
-    data = request.get_json()
+    data = requests.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
     modelo_id = data.get('modelo_id')
@@ -683,7 +683,7 @@ def registrar_reflexion_n1(ciclo_id):
     existente = db.execute("SELECT id FROM reflections WHERE cycle_id = ? AND reflection_type = 'n1'", (ciclo_id,)).fetchone()
     if existente:
         return jsonify({'error': 'Ya existe una reflexión N1 para este ciclo'}), 409
-    data = request.get_json()
+    data = requests.get_json()
     contenido = data.get('contenido')
     formato = data.get('formato')
     if not contenido or formato not in ['text', 'audio', 'video']:
@@ -709,7 +709,7 @@ def registrar_reflexion_n2(ciclo_id):
     existente = db.execute("SELECT id FROM reflections WHERE cycle_id = ? AND reflection_type = 'n2'", (ciclo_id,)).fetchone()
     if existente:
         return jsonify({'error': 'Ya existe una reflexión N2 para este ciclo'}), 409
-    data = request.get_json()
+    data = requests.get_json()
     contenido = data.get('contenido')
     formato = data.get('formato')
     if not contenido or formato not in ['text', 'audio', 'video']:
@@ -760,7 +760,7 @@ def propuestas_pendientes():
 @app.route('/cambiar_password', methods=['POST'])
 @login_required
 def cambiar_password():
-    data = request.get_json()
+    data = requests.get_json()
     old_password = data.get('old_password')
     new_password = data.get('new_password')
     if not old_password or not new_password:
@@ -931,7 +931,7 @@ def generar_con_modelo(mensaje):
 
 @app.route('/hermes/chat', methods=['POST'])
 def chat_hermes():
-    data = request.get_json()
+    data = requests.get_json()
     user_message = data.get('mensaje', '').strip().lower()
     contexto = data.get('contexto', 'es')
     session['contexto_cultural'] = contexto
@@ -1008,7 +1008,7 @@ def vestibulo_hilos():
 
 @app.route('/vestibulo/hilos', methods=['POST'])
 def vestibulo_crear_hilo():
-    data = request.get_json()
+    data = requests.get_json()
     db = get_db()
     cursor = db.execute("INSERT INTO vestibulo_hilos (titulo, autor) VALUES (?, ?)", (data['titulo'], data['autor']))
     hilo_id = cursor.lastrowid
@@ -1025,12 +1025,6 @@ def vestibulo_mensajes(hilo_id):
 @app.route('/')
 def frontend_root():
     return send_from_directory('frontend', 'index.html')    
-
-@app.route('/crear_tablas')
-def crear_tablas():
-    from app import init_db
-    init_db()
-    return "Tablas creadas (o ya existían). Ahora elimina este endpoint."
 
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
