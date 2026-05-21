@@ -1033,8 +1033,8 @@ def admin_panel():
     return send_from_directory('frontend', 'admin_panel.html')
 # Crear tablas si no existen (al iniciar la app)
 with app.app_context():
-    init_db()
-        
+    init_db() 
+
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
