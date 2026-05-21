@@ -307,25 +307,25 @@ def contar_maestros_calificados():
     return count['total']
 
 # ------------------- AUTENTICACIÓN -------------------
-@app.route('/registro', methods=['POST'])
+@app.route('/registro', methods=['GET', 'POST'])
 def registro():
-    data = requests.get_json()
+    if request.method == 'GET':
+        return send_from_directory('frontend', 'registro.html')
+    
+    # Si es POST, procesa el registro
+    data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
-    if not nombre or not password:
-        return jsonify({'error': 'Nombre y password requeridos'}), 400
-    db = get_db()
-    if db.execute("SELECT id FROM beings WHERE nombre = ?", (nombre,)).fetchone():
-        return jsonify({'error': 'Nombre ya existe'}), 409
-    password_hash = hash_password(password)
-    user_uuid = str(uuid.uuid4())
-    db.execute("INSERT INTO beings (uuid, nombre, password_hash) VALUES (?, ?, ?)", (user_uuid, nombre, password_hash))
-    db.commit()
-    return jsonify({'mensaje': 'Usuario registrado', 'uuid': user_uuid}), 201
+    # ... resto del código de registro ...
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    data = requests.get_json()
+    if request.method == 'GET':
+        # Muestra el formulario HTML
+        return send_from_directory('frontend', 'login.html')
+    
+    # Si es POST, procesa el login
+    data = request.get_json()  # ← ¡usa request, no requests!
     nombre = data.get('nombre')
     password = data.get('password')
     db = get_db()
