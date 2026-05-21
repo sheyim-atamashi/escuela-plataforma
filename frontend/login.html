@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión - Escuela de Misterios</title>
+    <style>
+        body { background: #0a0e1a; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: rgba(20, 25, 40, 0.95); padding: 2rem; border-radius: 1.5rem; width: 300px; text-align: center; border: 1px solid #dbb86b; }
+        input { width: 100%; padding: 0.6rem; margin: 0.5rem 0; background: #1e2230; border: 1px solid #4a4f6a; border-radius: 0.8rem; color: #eef; }
+        button { background: #8b6b4d; color: white; border: none; padding: 0.6rem; border-radius: 2rem; cursor: pointer; width: 100%; font-weight: bold; }
+        button:hover { background: #a57c5a; }
+        a { color: #dbb86b; text-decoration: none; }
+        .mensaje { margin-top: 1rem; color: #ffaa88; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>⛩️ Iniciar sesión</h2>
+    <form id="loginForm">
+        <input type="text" id="nombre" placeholder="Nombre de usuario" required>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <button type="submit">Entrar</button>
+    </form>
+    <p class="mensaje" id="mensaje"></p>
+    <p>¿No tienes cuenta? <a href="/registro">Regístrate aquí</a></p>
+    <p><a href="/">← Volver al vestíbulo</a></p>
+</div>
+<script>
+    document.getElementById('loginForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre: document.getElementById('nombre').value,
+                password: document.getElementById('password').value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            window.location.href = '/admin/panel';
+        } else {
+            document.getElementById('mensaje').innerText = data.error || 'Error al iniciar sesión';
+        }
+    };
+</script>
+</body>
+</html>

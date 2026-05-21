@@ -32,7 +32,11 @@
 <body>
 <div id="app">
     <div class="container">
-        <div class="language-selector">
+         <div style="text-align: right; margin-bottom: 1rem;">
+	    <a href="/login" style="color: #dbb86b; margin-right: 1rem;">🔐 Iniciar sesión</a>
+            <a href="/registro" style="color: #dbb86b;">📝 Registrarse</a>
+         </div>	
+         <div class="language-selector">
             <button @click="setLanguage('es')">🇪🇸 Español</button>
             <button @click="setLanguage('en')">🇬🇧 English</button>
             <button @click="setLanguage('zh')">🇨🇳 中文</button>
