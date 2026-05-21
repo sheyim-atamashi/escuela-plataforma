@@ -354,24 +354,6 @@ def alumno_me():
     db = get_db()
     user = db.execute("SELECT uuid, nombre, tipo, es_androide, nivel_actual, ciclo_general_actual, ciclos_completados, rol, lenguaje_pref, contexto_cultural FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
     return jsonify(dict(user))
-
-# ------------------- SUPERUSUARIO BÁSICO -------------------
-@app.route('/admin/crear_superusuario_inicial', methods=['POST'])
-def crear_superusuario_inicial():
-    db = get_db()
-    if db.execute("SELECT id FROM superusuario_control").fetchone():
-        return jsonify({'error': 'Superusuario ya existe'}), 409
-    data = request.get_json()
-    nombre = data.get('nombre')
-    password = data.get('password')
-    if not nombre or not password:
-        return jsonify({'error': 'Nombre y password requeridos'}), 400
-    password_hash = hash_password(password)
-    user_uuid = str(uuid.uuid4())
-    db.execute("INSERT INTO beings (uuid, nombre, password_hash, nivel_actual, ciclos_completados, rol, puede_gestionar_nivel0) VALUES (?, ?, ?, 22, 22, 'superusuario', 1)", (user_uuid, nombre, password_hash))
-    db.execute("INSERT INTO superusuario_control (superusuario_uuid, ultimo_acceso, activo) VALUES (?, ?, 1)", (user_uuid, datetime.now().isoformat()))
-    db.commit()
-    return jsonify({'mensaje': 'Superusuario creado', 'uuid': user_uuid})
     
 @app.route('/logout', methods=['POST'])
 @login_required
