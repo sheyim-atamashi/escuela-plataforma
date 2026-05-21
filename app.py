@@ -316,7 +316,16 @@ def registro():
     data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
-    # ... resto del código de registro ...
+    if not nombre or not password:
+        return jsonify({'error': 'Nombre y password requeridos'}), 400
+    db = get_db()
+    if db.execute("SELECT id FROM beings WHERE nombre = ?", (nombre,)).fetchone():
+        return jsonify({'error': 'Nombre ya existe'}), 409
+    password_hash = hash_password(password)
+    user_uuid = str(uuid.uuid4())
+    db.execute("INSERT INTO beings (uuid, nombre, password_hash) VALUES (?, ?, ?)", (user_uuid, nombre, password_hash))
+    db.commit()
+    return jsonify({'mensaje': 'Usuario registrado', 'uuid': user_uuid}), 201
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
