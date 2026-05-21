@@ -1029,18 +1029,6 @@ def frontend_root():
 # Crear tablas si no existen (al iniciar la app)
 with app.app_context():
     init_db()
-
-@app.route('/cargar_datos', methods=['GET'])
-def cargar_datos():
-    try:
-        with open('datos_escuela.sql', 'r') as f:
-            sql_script = f.read()
-        db = get_db()
-        db.executescript(sql_script)
-        db.commit()
-        return "✅ Datos cargados correctamente"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
         
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
