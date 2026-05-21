@@ -5,7 +5,8 @@ import json
 import random
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, jsonify, requests, session, g, send_from_directory  # ← aquí está
+from flask import Flask, jsonify, request, session, g, send_from_directory
+import requests
 from dotenv import load_dotenv
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
