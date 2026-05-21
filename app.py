@@ -6,12 +6,11 @@ import random
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, jsonify, request, session, g, send_from_directory
-import requests
 from dotenv import load_dotenv
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 import sqlite3
-import requests
+import requests   # ← esta es la librería para peticiones HTTP
 
 load_dotenv()
 app = Flask(__name__)
@@ -262,8 +261,8 @@ def init_db():
             cursor.execute('INSERT OR IGNORE INTO niveles (id, center_code, center_part, name) VALUES (?, ?, ?, ?)', nivel)
         conn.commit()
 
-@app.before_requests
-def before_requests():
+@app.before_request
+def before_request():
     g.db = get_db()
     verificar_inactividad_superusuario()
 
