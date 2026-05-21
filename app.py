@@ -921,8 +921,8 @@ def buscar_eneagrama(mensaje, db):
     return respuesta['respuesta'] if respuesta else None
 
 def generar_con_modelo(mensaje):
-    # Si no quieres usar Ollama aún, comenta esta función y usa un fallback
-    # Por ahora, devolvemos un mensaje genérico
+     Si no quieres usar Ollama aún, comenta esta función y usa un fallback
+     Por ahora, devolvemos un mensaje genérico
     return "Soy Hermes. Si quieres respuestas más profundas, cruza la puerta y regístrate en la Escuela."
 
 # =====================================================
@@ -931,7 +931,7 @@ def generar_con_modelo(mensaje):
 
 @app.route('/hermes/chat', methods=['POST'])
 def chat_hermes():
-    data = requests.get_json()
+    data = request.get_json()
     user_message = data.get('mensaje', '').strip().lower()
     contexto = data.get('contexto', 'es')
     session['contexto_cultural'] = contexto
@@ -1008,7 +1008,7 @@ def vestibulo_hilos():
 
 @app.route('/vestibulo/hilos', methods=['POST'])
 def vestibulo_crear_hilo():
-    data = requests.get_json()
+    data = request.get_json()
     db = get_db()
     cursor = db.execute("INSERT INTO vestibulo_hilos (titulo, autor) VALUES (?, ?)", (data['titulo'], data['autor']))
     hilo_id = cursor.lastrowid
