@@ -47,6 +47,10 @@
         <div class="card">
             <input type="text" v-model="seudonimo" placeholder="Tu nombre o seudónimo (cualquiera)" style="width: 70%; display: inline-block;">
             <button @click="guardarSeudonimo" style="width: 28%;">Entrar / Cambiar nombre</button>
+            <div style="text-align: right; margin-bottom: 10px;">
+                <a href="/login" style="margin-right: 10px; color: #dbb86b;">🔐 Iniciar sesión</a>
+                <a href="/registro" style="color: #dbb86b;">📝 Registrarse</a>
+            </div>
         </div>
 
         <div class="card" v-if="seudonimoGuardado">
