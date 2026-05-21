@@ -835,18 +835,18 @@ def buscar_faq(mensaje, db):
         for k in claves:
             if k in mensaje:
                 coinc += 1
-        print(f"DEBUG FAQ: claves={claves}, coinc={coinc}, respuesta={r['respuesta'][:50]}")
+  #      print(f"DEBUG FAQ: claves={claves}, coinc={coinc}, respuesta={r['respuesta'][:50]}")
         if coinc > max_coinc:
             max_coinc = coinc
             best = r['respuesta']
-    print(f"DEBUG FAQ RESULT: max_coinc={max_coinc}, best={best[:50] if best else None}")
+ #   print(f"DEBUG FAQ RESULT: max_coinc={max_coinc}, best={best[:50] if best else None}")
     # Si no hay coincidencia, devolver None
     if max_coinc == 0:
         return None
     return best
     
-faq = buscar_faq(user_message, db)
-print(f"FAQ devuelto: {faq}")
+#faq = buscar_faq(user_message, db)
+#print(f"FAQ devuelto: {faq}")
 
 def buscar_cita(mensaje, db):
     rows = db.execute("SELECT autor, cita, palabras_clave FROM citas_celebres WHERE activa=1").fetchall()
@@ -921,7 +921,7 @@ def buscar_eneagrama(mensaje, db):
     return respuesta['respuesta'] if respuesta else None
 
 def generar_con_modelo(mensaje):
-    # Si no quieres usar Ollama aún, comenta esta función y usa un fallback
+   #  Si no quieres usar Ollama aún, comenta esta función y usa un fallback
     # Por ahora, devolvemos un mensaje genérico
     return "Soy Hermes. Si quieres respuestas más profundas, cruza la puerta y regístrate en la Escuela."
 
@@ -931,7 +931,7 @@ def generar_con_modelo(mensaje):
 
 @app.route('/hermes/chat', methods=['POST'])
 def chat_hermes():
-    data = requests.get_json()
+    data = request.get_json()
     user_message = data.get('mensaje', '').strip().lower()
     contexto = data.get('contexto', 'es')
     session['contexto_cultural'] = contexto
@@ -1008,7 +1008,7 @@ def vestibulo_hilos():
 
 @app.route('/vestibulo/hilos', methods=['POST'])
 def vestibulo_crear_hilo():
-    data = requests.get_json()
+    data = request.get_json()
     db = get_db()
     cursor = db.execute("INSERT INTO vestibulo_hilos (titulo, autor) VALUES (?, ?)", (data['titulo'], data['autor']))
     hilo_id = cursor.lastrowid
