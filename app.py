@@ -1026,6 +1026,10 @@ def vestibulo_mensajes(hilo_id):
 def frontend_root():
     return send_from_directory('frontend', 'index.html')    
 
+# Crear tablas si no existen (al iniciar la app)
+with app.app_context():
+    init_db()
+
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
