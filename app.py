@@ -921,8 +921,8 @@ def buscar_eneagrama(mensaje, db):
     return respuesta['respuesta'] if respuesta else None
 
 def generar_con_modelo(mensaje):
-     Si no quieres usar Ollama aún, comenta esta función y usa un fallback
-     Por ahora, devolvemos un mensaje genérico
+   #  Si no quieres usar Ollama aún, comenta esta función y usa un fallback
+    # Por ahora, devolvemos un mensaje genérico
     return "Soy Hermes. Si quieres respuestas más profundas, cruza la puerta y regístrate en la Escuela."
 
 # =====================================================
