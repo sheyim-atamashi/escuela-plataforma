@@ -835,18 +835,18 @@ def buscar_faq(mensaje, db):
         for k in claves:
             if k in mensaje:
                 coinc += 1
-        print(f"DEBUG FAQ: claves={claves}, coinc={coinc}, respuesta={r['respuesta'][:50]}")
+  #      print(f"DEBUG FAQ: claves={claves}, coinc={coinc}, respuesta={r['respuesta'][:50]}")
         if coinc > max_coinc:
             max_coinc = coinc
             best = r['respuesta']
-    print(f"DEBUG FAQ RESULT: max_coinc={max_coinc}, best={best[:50] if best else None}")
+ #   print(f"DEBUG FAQ RESULT: max_coinc={max_coinc}, best={best[:50] if best else None}")
     # Si no hay coincidencia, devolver None
     if max_coinc == 0:
         return None
     return best
     
-faq = buscar_faq(user_message, db)
-print(f"FAQ devuelto: {faq}")
+#faq = buscar_faq(user_message, db)
+#print(f"FAQ devuelto: {faq}")
 
 def buscar_cita(mensaje, db):
     rows = db.execute("SELECT autor, cita, palabras_clave FROM citas_celebres WHERE activa=1").fetchall()
