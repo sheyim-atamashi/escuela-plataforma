@@ -358,7 +358,7 @@ def crear_superusuario_inicial():
     db = get_db()
     if db.execute("SELECT id FROM superusuario_control").fetchone():
         return jsonify({'error': 'Superusuario ya existe'}), 409
-    data = requests.get_json()
+    data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
     if not nombre or not password:
