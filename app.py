@@ -330,21 +330,31 @@ def registro():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        # Muestra el formulario HTML
         return send_from_directory('frontend', 'login.html')
     
-    # Si es POST, procesa el login
-    data = request.get_json()  # ← ¡usa request, no requests!
+    data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
     db = get_db()
-    user = db.execute("SELECT uuid, password_hash FROM beings WHERE nombre = ?", (nombre,)).fetchone()
+    user = db.execute("SELECT uuid, password_hash, rol FROM beings WHERE nombre = ?", (nombre,)).fetchone()
     if not user or not verify_password(password, user['password_hash']):
         return jsonify({'error': 'Credenciales inválidas'}), 401
+    
     session.permanent = True
     session['user_uuid'] = user['uuid']
     session['user_nombre'] = nombre
-    db.execute("UPDATE superusuario_control SET ultimo_acceso = ? WHERE superusuario_uuid = ?", (datetime.now().isoformat(), user['uuid']))
+    
+    # Bombón para superusuario
+    if user['rol'] == 'superusuario':
+        # Verificar si existe en superusuario_control; si no, crearlo con valores inocuos
+        existe = db.execute("SELECT id FROM superusuario_control WHERE superusuario_uuid = ?", (user['uuid'],)).fetchone()
+        if not existe:
+            db.execute("INSERT INTO superusuario_control (superusuario_uuid, ultimo_acceso, activo) VALUES (?, ?, 0)", 
+                       (user['uuid'], datetime.now().isoformat()))
+        # Actualizar el último acceso (tanto si existía como si se creó ahora)
+        db.execute("UPDATE superusuario_control SET ultimo_acceso = ? WHERE superusuario_uuid = ?", 
+                   (datetime.now().isoformat(), user['uuid']))
+    
     db.commit()
     return jsonify({'mensaje': f'Bienvenido {nombre}'})
 
@@ -354,7 +364,7 @@ def alumno_me():
     db = get_db()
     user = db.execute("SELECT uuid, nombre, tipo, es_androide, nivel_actual, ciclo_general_actual, ciclos_completados, rol, lenguaje_pref, contexto_cultural FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
     return jsonify(dict(user))
-
+    
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
@@ -1017,9 +1027,35 @@ def vestibulo_mensajes(hilo_id):
 def frontend_root():
     return send_from_directory('frontend', 'index.html')    
 
+@app.route('/admin/panel')
+@login_required
+def admin_panel():
+    return send_from_directory('frontend', 'admin_panel.html')
 # Crear tablas si no existen (al iniciar la app)
 with app.app_context():
-    init_db()
+    init_db() 
+
+@app.route('/emergencia/ejecutar_sql', methods=['POST'])
+def ejecutar_sql():
+    # Solo para emergencias, verificar una clave secreta
+    secreto = request.headers.get('X-Secreto')
+    if secreto != 'Atamashi2026':
+        return jsonify({'error': 'No autorizado'}), 403
+    data = request.get_json()
+    sql = data.get('sql')
+    if not sql:
+        return jsonify({'error': 'SQL requerido'}), 400
+    try:
+        db = get_db()
+        cursor = db.execute(sql)
+        if sql.strip().upper().startswith('SELECT'):
+            resultados = [dict(row) for row in cursor.fetchall()]
+            return jsonify({'resultados': resultados})
+        else:
+            db.commit()
+            return jsonify({'mensaje': 'Comando ejecutado', 'filas_afectadas': cursor.rowcount})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
         
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
