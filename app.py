@@ -1056,6 +1056,21 @@ def ejecutar_sql():
             return jsonify({'mensaje': 'Comando ejecutado', 'filas_afectadas': cursor.rowcount})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/emergencia/importar_bd', methods=['POST'])
+def importar_bd():
+    # Verificar secreto (por seguridad)
+    if request.headers.get('X-Secreto') != 'Atamashi2026':
+        return jsonify({'error': 'No autorizado'}), 403
+    try:
+        with open('escuela_completa.sql', 'r') as f:
+            sql_script = f.read()
+        db = get_db()
+        db.executescript(sql_script)
+        db.commit()
+        return jsonify({'mensaje': 'Base de datos importada correctamente'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
         
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
