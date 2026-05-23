@@ -1128,7 +1128,7 @@ def acceso_directo():
     db = get_db()
     user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'sheyim'").fetchone()
     if not user:
-        return "No existe el usuario superadmin"
+        return "No existe el usuario sheyim"
     
     session.permanent = True
     session['user_uuid'] = user['uuid']
