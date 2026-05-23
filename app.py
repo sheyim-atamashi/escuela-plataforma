@@ -1039,12 +1039,23 @@ def frontend_root():
 
 @app.route('/admin/panel')
 # @login_required
-def admin_panel():
-    return send_from_directory('frontend', 'admin_panel.html')
+#def admin_panel():
+ #   return send_from_directory('frontend', 'admin_panel.html')
 # Crear tablas si no existen (al iniciar la app)
 # with app.app_context():
 #    init_db() 
-   
+
+@app.route('/admin/panel')
+@login_required
+def admin_panel():
+    print("=== ENTRO A ADMIN PANEL ===")  # Log 1
+    try:
+        print("Intentando enviar admin_panel.html")  # Log 2
+        return send_from_directory('frontend', 'admin_panel.html')
+    except Exception as e:
+        print(f"ERROR: {e}")  # Log 3
+        return f"Error: {e}", 500
+        
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
