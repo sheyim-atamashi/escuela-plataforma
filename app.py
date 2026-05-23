@@ -1038,13 +1038,13 @@ def frontend_root():
     return send_from_directory('frontend', 'index.html')    
 
 @app.route('/admin/panel')
-@login_required
+# @login_required
 def admin_panel():
     return send_from_directory('frontend', 'admin_panel.html')
 # Crear tablas si no existen (al iniciar la app)
-with app.app_context():
-    init_db() 
-
+# with app.app_context():
+#    init_db() 
+   
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
