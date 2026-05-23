@@ -1056,20 +1056,20 @@ def admin_panel():
         print(f"ERROR: {e}")  # Log 3
         return f"Error: {e}", 500
 
+from flask import redirect  # Asegúrate de que esté al inicio del archivo
+
 @app.route('/acceso_directo')
 def acceso_directo():
-    # Buscar al usuario superadmin en la BD
+    from flask import session, redirect
     db = get_db()
     user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'superadmin'").fetchone()
     if not user:
         return "No existe el usuario superadmin. Primero créalo con /emergencia/crear_superadmin"
     
-    # Iniciar sesión manualmente
     session.permanent = True
     session['user_uuid'] = user['uuid']
     session['user_nombre'] = user['nombre']
     
-    # Redirigir al panel
     return redirect('/admin/panel')
     
 # ------------------- INICIAR SERVIDOR -------------------
