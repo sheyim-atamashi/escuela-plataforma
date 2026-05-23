@@ -40,7 +40,7 @@ def derive_key_for_cipher(password: str, salt: bytes) -> bytes:
     return low_level.hash_secret_raw(
         secret=password.encode('utf-8'),
         salt=salt,
-        time_cost=2,
+        time_cost=8,
         memory_cost=1024,
         parallelism=2,
         hash_len=32,
