@@ -258,81 +258,81 @@ def init_db():
             (22, 'CM', 'intelectual', 'Motricidad fina/aprendizaje complejo')
         ]
         for nivel in niveles_data:
-            cursor.execute('INSERT OR IGNORE INTO niveles (id, center_code, center_part, name) VALUES (?, ?, ?, ?)', nivel)
-        conn.commit()
+        cursor.execute('INSERT OR IGNORE INTO niveles (id, center_code, center_part, name) VALUES (?, ?, ?, ?)', nivel)
 
-# Tablas para Hermes
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS respuestas_estandar (
-        id INTEGER PRIMARY KEY,
-        palabras_clave TEXT NOT NULL,
-        respuesta TEXT NOT NULL,
-        activa BOOLEAN DEFAULT 1,
-        veces_usada INTEGER DEFAULT 0,
-        es_canonico BOOLEAN DEFAULT 0,
-        tradicion TEXT,
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
+        # Tablas para Hermes
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS respuestas_estandar (
+                id INTEGER PRIMARY KEY,
+                palabras_clave TEXT NOT NULL,
+                respuesta TEXT NOT NULL,
+                activa BOOLEAN DEFAULT 1,
+                veces_usada INTEGER DEFAULT 0,
+                es_canonico BOOLEAN DEFAULT 0,
+                tradicion TEXT,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS citas_celebres (
-        id INTEGER PRIMARY KEY,
-        autor TEXT NOT NULL,
-        cita TEXT NOT NULL,
-        palabras_clave TEXT NOT NULL,
-        tradicion TEXT,
-        es_canonico BOOLEAN DEFAULT 0,
-        activa BOOLEAN DEFAULT 1,
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS citas_celebres (
+                id INTEGER PRIMARY KEY,
+                autor TEXT NOT NULL,
+                cita TEXT NOT NULL,
+                palabras_clave TEXT NOT NULL,
+                tradicion TEXT,
+                es_canonico BOOLEAN DEFAULT 0,
+                activa BOOLEAN DEFAULT 1,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS parabolas_hermes (
-        id INTEGER PRIMARY KEY,
-        palabras_clave TEXT NOT NULL,
-        parabola TEXT NOT NULL,
-        tradicion TEXT,
-        es_canonico BOOLEAN DEFAULT 0,
-        activa BOOLEAN DEFAULT 1,
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS parabolas_hermes (
+                id INTEGER PRIMARY KEY,
+                palabras_clave TEXT NOT NULL,
+                parabola TEXT NOT NULL,
+                tradicion TEXT,
+                es_canonico BOOLEAN DEFAULT 0,
+                activa BOOLEAN DEFAULT 1,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS ensenanza_dialectica (
-        id INTEGER PRIMARY KEY,
-        concepto TEXT NOT NULL,
-        ejemplo_dialectico TEXT NOT NULL,
-        pregunta TEXT NOT NULL,
-        respuesta TEXT,
-        palabras_clave TEXT NOT NULL,
-        nivel_asociado INTEGER DEFAULT 0,
-        tradicion TEXT,
-        es_canonico BOOLEAN DEFAULT 0,
-        creado_por_uuid TEXT,
-        contexto_cultural TEXT,
-        aprobado BOOLEAN DEFAULT 1,
-        activo BOOLEAN DEFAULT 1,
-        veces_usada INTEGER DEFAULT 0,
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ensenanza_dialectica (
+                id INTEGER PRIMARY KEY,
+                concepto TEXT NOT NULL,
+                ejemplo_dialectico TEXT NOT NULL,
+                pregunta TEXT NOT NULL,
+                respuesta TEXT,
+                palabras_clave TEXT NOT NULL,
+                nivel_asociado INTEGER DEFAULT 0,
+                tradicion TEXT,
+                es_canonico BOOLEAN DEFAULT 0,
+                creado_por_uuid TEXT,
+                contexto_cultural TEXT,
+                aprobado BOOLEAN DEFAULT 1,
+                activo BOOLEAN DEFAULT 1,
+                veces_usada INTEGER DEFAULT 0,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS respuestas_eneagrama (
-        id INTEGER PRIMARY KEY,
-        tipo INTEGER NOT NULL,
-        palabras_clave TEXT NOT NULL,
-        respuesta TEXT NOT NULL,
-        activa BOOLEAN DEFAULT 1,
-        veces_usada INTEGER DEFAULT 0,
-        es_canonico BOOLEAN DEFAULT 0,
-        tradicion TEXT,
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS respuestas_eneagrama (
+                id INTEGER PRIMARY KEY,
+                tipo INTEGER NOT NULL,
+                palabras_clave TEXT NOT NULL,
+                respuesta TEXT NOT NULL,
+                activa BOOLEAN DEFAULT 1,
+                veces_usada INTEGER DEFAULT 0,
+                es_canonico BOOLEAN DEFAULT 0,
+                tradicion TEXT,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+    conn.commit()
 
 # =====================================================
 # FUNCIONES AUXILIARES PARA HERMES
