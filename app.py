@@ -1030,7 +1030,7 @@ def crear_superadmin():
     user_uuid = str(uuid.uuid4())
     # Hash para la clave "superadmin123" (generado localmente, pero lo ponemos fijo)
     hash_fijo = "$argon2id$v=19$m=1024,t=2,p=2$c2FsdGZha2U$nZ1kH5cJ9rW0xY2LpQ8R4vM7bN3aK6dFgJhYtU5iLpQ"  # Esto es "superadmin123"
-    db.execute("INSERT INTO beings (uuid, nombre, password_hash, nivel_actual, ciclos_completados, rol) VALUES (?, 'superadmin', ?, 22, 22, 'superusuario')", (user_uuid, hash_fijo))
+    db.execute("INSERT INTO beings (uuid, nombre, password_hash, nivel_actual, ciclos_completados, rol) VALUES (?, 'sheyimatamashi', ?, 22, 22, 'superusuario')", (user_uuid, hash_fijo))
     db.execute("INSERT INTO superusuario_control (superusuario_uuid, ultimo_acceso, activo) VALUES (?, datetime('now'), 1)", (user_uuid,))
     db.commit()
     return jsonify({'mensaje': 'Superusuario creado. Nombre: superadmin, Clave: superadmin123'})
