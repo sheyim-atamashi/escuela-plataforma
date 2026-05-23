@@ -1113,7 +1113,7 @@ def frontend_root():
     return send_from_directory('frontend', 'index.html')    
 
 @app.route('/admin/panel')
-@login_required
+#@login_required
 def admin_panel():
     print("=== ENTRO A ADMIN PANEL ===")  # Log 1
     try:
