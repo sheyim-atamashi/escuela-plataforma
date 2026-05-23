@@ -1055,7 +1055,23 @@ def admin_panel():
     except Exception as e:
         print(f"ERROR: {e}")  # Log 3
         return f"Error: {e}", 500
-        
+
+@app.route('/acceso_directo')
+def acceso_directo():
+    # Buscar al usuario superadmin en la BD
+    db = get_db()
+    user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'superadmin'").fetchone()
+    if not user:
+        return "No existe el usuario superadmin. Primero créalo con /emergencia/crear_superadmin"
+    
+    # Iniciar sesión manualmente
+    session.permanent = True
+    session['user_uuid'] = user['uuid']
+    session['user_nombre'] = user['nombre']
+    
+    # Redirigir al panel
+    return redirect('/admin/panel')
+    
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
