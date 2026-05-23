@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 
-DATABASE = os.getenv('DATABASE_URL', 'escuela_2026/escuela.db')
+DATABASE = os.getenv('DATABASE_URL', 'escuela.db')
 INACTIVITY_DAYS = int(os.getenv('SUPERUSER_INACTIVITY_DAYS', 90))
 
 os.makedirs(os.path.dirname(DATABASE) if os.path.dirname(DATABASE) else '.', exist_ok=True)
