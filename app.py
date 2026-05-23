@@ -258,7 +258,7 @@ def init_db():
             (22, 'CM', 'intelectual', 'Motricidad fina/aprendizaje complejo')
         ]
         for nivel in niveles_data:
-        cursor.execute('INSERT OR IGNORE INTO niveles (id, center_code, center_part, name) VALUES (?, ?, ?, ?)', nivel)
+            cursor.execute('INSERT OR IGNORE INTO niveles (id, center_code, center_part, name) VALUES (?, ?, ?, ?)', nivel)
 
         # Tablas para Hermes
         cursor.execute('''
