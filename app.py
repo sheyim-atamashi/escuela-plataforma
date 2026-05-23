@@ -1060,17 +1060,16 @@ from flask import redirect  # Asegúrate de que esté al inicio del archivo
 
 @app.route('/acceso_directo')
 def acceso_directo():
-    from flask import session, redirect
     db = get_db()
     user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'superadmin'").fetchone()
     if not user:
-        return "No existe el usuario superadmin. Primero créalo con /emergencia/crear_superadmin"
+        return "No existe el usuario superadmin"
     
     session.permanent = True
     session['user_uuid'] = user['uuid']
     session['user_nombre'] = user['nombre']
     
-    return redirect('/admin/panel')
+    return f"Sesión iniciada como {user['nombre']}. Ahora ve a /admin/panel"
     
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
