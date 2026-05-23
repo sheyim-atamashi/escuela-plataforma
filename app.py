@@ -264,11 +264,11 @@ def init_db():
 @app.before_request
 def before_request():
     g.db = get_db()
-    verificar_inactividad_superusuario()
+    #verificar_inactividad_superusuario()
 
 def verificar_inactividad_superusuario():
     db = get_db()
-    sup = db.execute("SELECT superusuario_uuid, ultimo_acceso, activo FROM superusuario_control WHERE activo=1").fetchone()
+    sup = db.execute("SELECT superusuario_uuid, ultimo_acceso, activo FROM superusuario_control WHERE activo = 1").fetchone()
     if sup and sup['activo'] == 1:
         ultimo = datetime.fromisoformat(sup['ultimo_acceso']) if sup['ultimo_acceso'] else datetime.min
         if datetime.now() - ultimo > timedelta(days=INACTIVITY_DAYS):
