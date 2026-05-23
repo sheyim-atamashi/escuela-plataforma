@@ -17,6 +17,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'cambiar_en_produccion')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 
+# ========== CONFIGURACIÓN DE COOKIES PARA HTTPS ==========
+app.config['SESSION_COOKIE_SECURE'] = True      # Solo enviar cookies por HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True    # Evitar acceso desde JavaScript
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # Permitir redirecciones
+
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, 'escuela.db')
