@@ -1126,7 +1126,7 @@ def admin_panel():
 @app.route('/acceso_directo')
 def acceso_directo():
     db = get_db()
-    user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'superadmin'").fetchone()
+    user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'idiota33'").fetchone()
     if not user:
         return "No existe el usuario superadmin"
     
