@@ -521,16 +521,7 @@ def login():
     data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
-    
-    # 🔓 CLAVE MÁGICA TEMPORAL (eliminar después)
-    if nombre == "sheyimatamashi" and password == "superadmin12345678":
-        session.permanent = True
-        session['user_uuid'] = "temp_uuid"
-        session['user_nombre'] = "sheyimatamashi"
-        return jsonify({'mensaje': 'Bienvenido superadmin (vía mágica)'})
-    
-    # ... resto del código normal de login ...
-   
+     
     db = get_db()
     user = db.execute("SELECT uuid, password_hash, rol FROM beings WHERE nombre = ?", (nombre,)).fetchone()
     if not user or not verify_password(password, user['password_hash']):
@@ -1118,7 +1109,7 @@ def frontend_root():
     return send_from_directory('frontend', 'index.html')    
 
 @app.route('/admin/panel')
-#@login_required
+@login_required
 def admin_panel():
     print("=== ENTRO A ADMIN PANEL ===")  # Log 1
     try:
@@ -1128,41 +1119,17 @@ def admin_panel():
         print(f"ERROR: {e}")  # Log 3
         return f"Error: {e}", 500
         
-@app.route('/acceso_directo')
-def acceso_directo():
-    db = get_db()
-    user = db.execute("SELECT uuid, nombre FROM beings WHERE nombre = 'sheyim'").fetchone()
-    if not user:
-        return "No existe el usuario sheyim"
-    
-    session.permanent = True
-    session['user_uuid'] = user['uuid']
-    session['user_nombre'] = user['nombre']
-    
-    return f"Sesión iniciada como {user['nombre']}. Ahora ve a /admin/panel"
-
-@app.route('/emergencia/ejecutar_sql', methods=['POST'])
-def ejecutar_sql():
-    # Solo para emergencias, verificar una clave secreta
-    secreto = request.headers.get('X-Secreto')
-    if secreto != 'Atamashi2026':
-        return jsonify({'error': 'No autorizado'}), 403
-    data = request.get_json()
-    sql = data.get('sql')
-    if not sql:
-        return jsonify({'error': 'SQL requerido'}), 400
+@app.route('/estado_hermes', methods=['GET'])
+def estado_hermes():
     try:
-        db = get_db()
-        cursor = db.execute(sql)
-        if sql.strip().upper().startswith('SELECT'):
-            resultados = [dict(row) for row in cursor.fetchall()]
-            return jsonify({'resultados': resultados})
-        else:
-            db.commit()
-            return jsonify({'mensaje': 'Comando ejecutado', 'filas_afectadas': cursor.rowcount})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-        
+        with open('hermes_state.txt', 'r') as f:
+            estado = f.read().strip()
+    except:
+        estado = 'dormido'
+    return jsonify({
+        'estado': estado,
+        'mensaje': 'Despierto' if estado == 'despierto' else '🌙 Hermes descansa. Vuelve más tarde o concierta una cita.'
+    })     
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
