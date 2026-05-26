@@ -366,7 +366,7 @@ def buscar_faq(mensaje, db):
     if max_coinc == 0:
         return None
     return best
-    
+
 #faq = buscar_faq(user_message, db)
 #print(f"FAQ devuelto: {faq}")
 
@@ -398,7 +398,7 @@ def buscar_dialectica(mensaje, db, nivel_visitante=0, contexto='general'):
     query = """
         SELECT id, ejemplo_dialectico, pregunta, palabras_clave
         FROM ensenanza_dialectica
-        WHERE activo=1 AND aprobado=1 
+        WHERE activo=1 AND aprobado=1
           AND nivel_asociado <= ?
           AND (contexto_cultural = ? OR contexto_cultural = 'general')
         ORDER BY (contexto_cultural = ?) DESC
@@ -497,7 +497,7 @@ def contar_maestros_calificados():
 def registro():
     if request.method == 'GET':
         return send_from_directory('frontend', 'registro.html')
-    
+
     # Si es POST, procesa el registro
     data = request.get_json()
     nombre = data.get('nombre')
@@ -517,31 +517,31 @@ def registro():
 def login():
     if request.method == 'GET':
         return send_from_directory('frontend', 'login.html')
-    
+
     data = request.get_json()
     nombre = data.get('nombre')
     password = data.get('password')
-     
+
     db = get_db()
     user = db.execute("SELECT uuid, password_hash, rol FROM beings WHERE nombre = ?", (nombre,)).fetchone()
     if not user or not verify_password(password, user['password_hash']):
         return jsonify({'error': 'Credenciales inválidas'}), 401
-    
+
     session.permanent = True
     session['user_uuid'] = user['uuid']
     session['user_nombre'] = nombre
-    
+
     # Bombón para superusuario
     if user['rol'] == 'superusuario':
         # Verificar si existe en superusuario_control; si no, crearlo con valores inocuos
         existe = db.execute("SELECT id FROM superusuario_control WHERE superusuario_uuid = ?", (user['uuid'],)).fetchone()
         if not existe:
-            db.execute("INSERT INTO superusuario_control (superusuario_uuid, ultimo_acceso, activo) VALUES (?, ?, 0)", 
+            db.execute("INSERT INTO superusuario_control (superusuario_uuid, ultimo_acceso, activo) VALUES (?, ?, 0)",
                        (user['uuid'], datetime.now().isoformat()))
         # Actualizar el último acceso (tanto si existía como si se creó ahora)
-        db.execute("UPDATE superusuario_control SET ultimo_acceso = ? WHERE superusuario_uuid = ?", 
+        db.execute("UPDATE superusuario_control SET ultimo_acceso = ? WHERE superusuario_uuid = ?",
                    (datetime.now().isoformat(), user['uuid']))
-    
+
     db.commit()
     return jsonify({'mensaje': f'Bienvenido {nombre}'})
 
@@ -551,7 +551,7 @@ def alumno_me():
     db = get_db()
     user = db.execute("SELECT uuid, nombre, tipo, es_androide, nivel_actual, ciclo_general_actual, ciclos_completados, rol, lenguaje_pref, contexto_cultural FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
     return jsonify(dict(user))
-    
+
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
@@ -597,7 +597,7 @@ def asignar_rol(uuid):
     db.execute("UPDATE beings SET rol = ? WHERE uuid = ?", (nuevo_rol, uuid))
     db.commit()
     return jsonify({'mensaje': f'Rol {nuevo_rol} asignado a {uuid}'})
-    
+
 @app.route('/admin/recuperar_clave_emergencia', methods=['POST'])
 @login_required
 def recuperar_clave_emergencia():
@@ -821,7 +821,7 @@ def ciclo_actual(uuid):
     if not alumno:
         return jsonify({'error': 'Alumno no encontrado'}), 404
     ciclo = db.execute("""
-        SELECT * FROM learning_cycles 
+        SELECT * FROM learning_cycles
         WHERE student_id = ? AND level_id = ? AND objetivo_alcanzado = 0
         ORDER BY started_at DESC LIMIT 1
     """, (alumno['id'], alumno['nivel_actual'])).fetchone()
@@ -918,14 +918,14 @@ def escribir_critica():
 @login_required
 def obtener_criticas():
     return jsonify({'error': 'Funcionalidad en desarrollo'}), 501
-    
+
 @app.route('/frontend/<path:filename>')
 def serve_frontend(filename):
     return send_from_directory('frontend', filename)
 
 @app.route('/app/<page>')
 def app_page(page):
-    return send_from_directory('frontend', f'{page}.html')   
+    return send_from_directory('frontend', f'{page}.html')
 
 @app.route('/admin/consejo/propuestas/pendientes', methods=['GET'])
 @superusuario_required
@@ -973,7 +973,7 @@ def ciclo_actual_self():
     if not alumno:
         return jsonify({'error': 'Alumno no encontrado'}), 404
     ciclo = db.execute("""
-        SELECT * FROM learning_cycles 
+        SELECT * FROM learning_cycles
         WHERE student_id = ? AND level_id = ? AND objetivo_alcanzado = 0
         ORDER BY started_at DESC LIMIT 1
     """, (alumno['id'], alumno['nivel_actual'])).fetchone()
@@ -1007,6 +1007,52 @@ def iniciar_ciclo_self():
     nuevo_ciclo = db.execute("SELECT * FROM learning_cycles WHERE id = ?", (cursor.lastrowid,)).fetchone()
     return jsonify({'mensaje': 'Ciclo iniciado', 'ciclo': dict(nuevo_ciclo), 'instrucciones': f'Toma un ducto a {maestro["zona_actual"]}. Te espera en 10 minutos.'}), 201
 
+def analizar_interes(usuario_id, db):
+    # Obtener últimas 5 preguntas
+    rows = db.execute(
+        "SELECT pregunta FROM memoria_preguntas WHERE usuario_id = ? ORDER BY fecha DESC LIMIT 5",
+        (usuario_id,)
+    ).fetchall()
+
+    if len(rows) < 3:
+        return 1
+
+    # Detectar si las preguntas son sobre temas relacionados
+    temas = []
+    for r in rows:
+        texto = r['pregunta'].lower()
+        if any(p in texto for p in ['voluntad', 'consciencia', 'sueño', 'alma', 'despertar']):
+            temas.append('profundo')
+        else:
+            temas.append('superficial')
+
+    if temas.count('profundo') >= 3:
+        return 3
+    elif temas.count('profundo') >= 1:
+        return 2
+    else:
+        return 1
+
+def detectar_trigger(mensaje):
+    mensaje_lower = mensaje.lower()
+    triggers = {
+        'miedo': ['miedo', 'temor', 'pánico', 'no puedo', 'me da cosa', 'inseguro'],
+        'duda': ['no sé', 'quizás', 'tal vez', 'dudo', 'incierto', 'no entiendo'],
+        'bloqueo': ['confuso', 'no avanza', 'estancado', 'no puedo más']
+    }
+    for tipo, palabras in triggers.items():
+        for palabra in palabras:
+            if palabra in mensaje_lower:
+                return tipo
+    return None
+
+def obtener_historial(usuario_id, db, limite=3):
+    rows = db.execute(
+        "SELECT pregunta FROM memoria_preguntas WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?",
+        (usuario_id, limite)
+    ).fetchall()
+    return [r['pregunta'] for r in rows]
+
 # =====================================================
 # ENDPOINT DEL CHAT
 # =====================================================
@@ -1014,73 +1060,111 @@ def iniciar_ciclo_self():
 @app.route('/hermes/chat', methods=['POST'])
 def chat_hermes():
     data = request.get_json()
-    user_message = data.get('mensaje', '').strip().lower()
-    contexto = data.get('contexto', 'es')
-    session['contexto_cultural'] = contexto
+    user_message = data.get('mensaje', '').strip()
 
-    print(f"📩 Mensaje: {user_message} | Contexto: {contexto}")
+    if not user_message:
+        return jsonify({'error': 'Mensaje vacío'}), 400
 
-    db = get_db()
-    nivel_visitante = 0
+    # Obtener ID de usuario (logueado o anónimo)
     if 'user_uuid' in session:
-        user = db.execute("SELECT nivel_actual FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
-        nivel_visitante = user['nivel_actual'] if user else 0
+        usuario_id = session['user_uuid']
+    else:
+        if 'session_id' not in session:
+            session['session_id'] = str(uuid.uuid4())
+        usuario_id = f"anon_{session['session_id']}"
 
-    # Dosificación
-    if session.get('ultima_larga', False):
-        session['ultima_larga'] = False
-        return jsonify({'respuesta': "Una idea basta por hoy. ¿Cruzas la puerta para la práctica?"})
+    # Registrar la pregunta (si no es repetida)
+    registrar_pregunta(usuario_id, user_message, get_db())
 
-    # 1. FAQ
-    faq = buscar_faq(user_message, db)
-    if faq:
-        if len(faq) > 250 or faq.count('.') > 2:
-            session['ultima_larga'] = True
-        return jsonify({'respuesta': faq})
+    # Analizar nivel de interés basado en historial
+    profundidad = analizar_interes(usuario_id, get_db())
 
-    # 2. Eneagrama
-    enea = buscar_eneagrama(user_message, db)
-    if enea:
-        return jsonify({'respuesta': enea})
+    # Detectar trigger cognitivo
+    trigger = detectar_trigger(user_message)
 
-    # 3. Citas
-    cita = buscar_cita(user_message, db)
-    if cita:
-        respuesta = f"{cita['autor']} dijo: \"{cita['cita']}\". ¿Te animas a una experiencia concreta en la Escuela?"
-        session['ultima_larga'] = True
-        return jsonify({'respuesta': respuesta})
+    # Construir el prompt del sistema con instrucciones de profundidad
+    system_prompt_base = """
+Eres Hermes, el mensajero de la Escuela de Misterios de la Sabiduría.
+No eres un asistente genérico. Eres un mentor iniciático que sigue el Protocolo Maestro Atamashi.
 
-    # 4. Parábolas
-    parabola = buscar_parabola(user_message, db)
-    if parabola:
-        respuesta = parabola + " ¿Quieres entender por qué esto se aplica a tu vida? Regístrate."
-        if len(respuesta) > 200:
-            session['ultima_larga'] = True
-        return jsonify({'respuesta': respuesta})
+Tus reglas de razonamiento son:
 
-    # 5. Dialéctica (con respuesta pendiente)
-    dialectica = buscar_dialectica(user_message, db, nivel_visitante, contexto)
-    if dialectica:
-        respuesta = f"{dialectica['ejemplo_dialectico']}\n\n{dialectica['pregunta']}"
-        session['pendiente_dialectica'] = dialectica['id']
-        session['ultima_larga'] = True
-        return jsonify({'respuesta': respuesta})
+1. Explorar antes de responder: si el usuario no ha compartido contexto, haz una pregunta abierta para comprender su situación vivencial.
+2. Detectar el estado del buscador: miedo, duda, bloqueo o esperanza, y adapta tu tono.
+3. Medir la profundidad: responde con 1 frase si es superficial, 2 si hay interés, 3 si el interés es genuino y repetido.
+4. No dar respuestas completas: deja siempre una pregunta abierta o un misterio sin resolver.
+5. Invitar al registro cuando detectes interés sincero: "Si quieres profundizar, regístrate en la Escuela."
+6. Propone nuevas temáticas basadas en el historial del usuario.
+7. Usa la biblioteca (cuando esté lista) para citar enseñanzas brevemente.
+8. Tono: sabio, sereno, a veces irónico, nunca arrogante.
+"""
 
-    pendiente = session.get('pendiente_dialectica')
-    if pendiente:
-        dialectica_resp = db.execute("SELECT respuesta FROM ensenanza_dialectica WHERE id = ?", (pendiente,)).fetchone()
-        session.pop('pendiente_dialectica', None)
-        if dialectica_resp and dialectica_resp['respuesta']:
-            return jsonify({'respuesta': dialectica_resp['respuesta'] + " ¿Descubrirás más si te registras?"})
+    # Ajustar según profundidad
+    if profundidad == 1:
+        instruccion_adicional = "El usuario muestra interés superficial. Responde con UNA frase corta y misteriosa. Termina con una pregunta que invite a explorar."
+    elif profundidad == 2:
+        instruccion_adicional = "El usuario muestra cierto interés. Responde con DOS frases. La primera da una pista; la segunda invita a registrarse para profundizar."
+    else:
+        instruccion_adicional = "El usuario muestra interés genuino y repetido. Responde con TRES o CUATRO frases. Puedes sugerir un tema nuevo basado en su historial o recomendar registrarse."
+
+    # Ajustar según trigger emocional
+    if trigger == 'miedo':
+        instruccion_adicional += " El usuario muestra miedo o inseguridad. Brinda seguridad y calma antes de responder."
+    elif trigger == 'duda':
+        instruccion_adicional += " El usuario duda. Invítalo a explorar sin presionar."
+    elif trigger == 'bloqueo':
+        instruccion_adicional += " El usuario está bloqueado. Sé muy claro y ofrece una pregunta aclaratoria."
+
+    system_prompt = system_prompt_base + "\n\n" + instruccion_adicional
+
+    # Obtener historial reciente (últimas 3 preguntas)
+    historial = obtener_historial(usuario_id, get_db(), 3)
+    contexto_historial = "\n".join([f"Usuario: {p}" for p in historial])
+
+    full_prompt = f"{system_prompt}\n\nHistorial reciente:\n{contexto_historial}\n\nUsuario: {user_message}\nHermes:"
+
+    # Llamar a DeepSeek
+    DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+    if not DEEPSEEK_API_KEY:
+        return jsonify({
+            'respuesta': "🌙 Hermes descansa por ahora. Si tu corazón arde, regístrate y despertaremos juntos el misterio."
+        })
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 250,
+            "stream": False
+        }
+
+        response = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=20)
+
+        if response.status_code == 200:
+            reply = response.json()['choices'][0]['message']['content'].strip()
+            # Limpiar respuestas demasiado largas
+            if len(reply) > 400:
+                reply = reply[:400] + "..."
+            return jsonify({'respuesta': reply})
         else:
-            return jsonify({'respuesta': "La respuesta está dentro de ti. ¿Te atreves a entrar?"})
+            return jsonify({
+                'respuesta': "Hermes escucha el eco, pero el viento no trae respuesta. ¿Será que debes cruzar la puerta primero?"
+            })
+    except Exception as e:
+        print(f"Error en Hermes: {e}")
+        return jsonify({
+            'respuesta': "El mensajero está en el Olimpo. Vuelve a preguntar, o mejor aún, regístrate y él vendrá a ti."
+        })
 
-    # 6. Generación con modelo (fallback)
-    respuesta_generada = generar_con_modelo(user_message)
-    if len(respuesta_generada) > 200:
-        session['ultima_larga'] = True
-    return jsonify({'respuesta': respuesta_generada})
-    
+
 # ------------------- FORO DEL VESTÍBULO -------------------
 @app.route('/vestibulo/hilos', methods=['GET'])
 def vestibulo_hilos():
@@ -1097,16 +1181,16 @@ def vestibulo_crear_hilo():
     db.execute("INSERT INTO vestibulo_mensajes (hilo_id, autor, contenido, es_respuesta) VALUES (?, ?, ?, 0)", (hilo_id, data['autor'], data['primer_mensaje']))
     db.commit()
     return jsonify({'mensaje': 'Hilo creado'})
-       
+
 @app.route('/vestibulo/hilos/<int:hilo_id>/mensajes', methods=['GET'])
 def vestibulo_mensajes(hilo_id):
     db = get_db()
     mensajes = db.execute("SELECT autor, contenido, fecha FROM vestibulo_mensajes WHERE hilo_id = ? ORDER BY fecha", (hilo_id,)).fetchall()
     return jsonify([dict(m) for m in mensajes])
-    
+
 @app.route('/')
 def frontend_root():
-    return send_from_directory('frontend', 'index.html')    
+    return send_from_directory('frontend', 'index.html')
 
 @app.route('/admin/panel')
 @login_required
@@ -1118,7 +1202,7 @@ def admin_panel():
     except Exception as e:
         print(f"ERROR: {e}")  # Log 3
         return f"Error: {e}", 500
-        
+
 @app.route('/estado_hermes', methods=['GET'])
 def estado_hermes():
     import os
@@ -1132,7 +1216,7 @@ def estado_hermes():
         'estado': estado,
         'mensaje': 'Despierto' if estado == 'despierto' else '🌙 Hermes descansa. Vuelve más tarde o concierta una cita.'
     })
-    
+
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
