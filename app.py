@@ -1133,6 +1133,12 @@ Tus reglas de razonamiento son:
             'respuesta': "🌙 Hermes descansa por ahora. Si tu corazón arde, regístrate y despertaremos juntos el misterio."
         })
 
+    FRASES_POETICAS = [
+    "El mensajero escucha el eco del silencio. Vuelve a preguntar cuando el viento traiga la respuesta.",
+    "Hermes está en el Olimpo, pero su sombra aún vela por ti. Reformula tu pregunta.",
+    "Las palabras no siempre cruzan el umbral. Intenta de nuevo, o mejor aún, regístrate y él vendrá a ti.",
+    "El oráculo calla, pero no porque ignore tu voz. A veces el silencio es la mejor enseñanza."
+]
     try:
         headers = {
             "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
@@ -1162,12 +1168,9 @@ Tus reglas de razonamiento son:
                 'respuesta': "Hermes escucha el eco, pero el viento no trae respuesta. ¿Será que debes cruzar la puerta primero?"
             })
     except Exception as e:
-        print(f"Error en Hermes: {e}")
-        return jsonify({
-            'respuesta': "El mensajero está en el Olimpo. Vuelve a preguntar, o mejor aún, regístrate y él vendrá a ti."
-        })
-
-
+    print(f"Error en Hermes: {e}")
+    return jsonify({'respuesta': random.choice(FRASES_POETICAS)})
+    
 # ------------------- FORO DEL VESTÍBULO -------------------
 @app.route('/vestibulo/hilos', methods=['GET'])
 def vestibulo_hilos():
@@ -1205,20 +1208,6 @@ def admin_panel():
     except Exception as e:
         print(f"ERROR: {e}")  # Log 3
         return f"Error: {e}", 500
-
-@app.route('/estado_hermes', methods=['GET'])
-def estado_hermes():
-    import os
-    state_file = os.path.join(os.path.dirname(__file__), 'hermes_state.txt')
-    try:
-        with open(state_file, 'r') as f:
-            estado = f.read().strip()
-    except:
-        estado = 'dormido'
-    return jsonify({
-        'estado': estado,
-        'mensaje': 'Despierto' if estado == 'despierto' else '🌙 Hermes descansa. Vuelve más tarde o concierta una cita.'
-    })
 
 @app.route('/aceptar_contrato_etico', methods=['POST'])
 @login_required
