@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sala de Recepción - Escuela de Misterios</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0e1a;
+            font-family: 'Segoe UI', 'Times New Roman', serif;
+            color: #eef;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Encabezado */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            border-bottom: 1px solid #dbb86b;
+            padding-bottom: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: #dbb86b;
+        }
+
+        .welcome {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            font-style: italic;
+        }
+
+        .astro-info {
+            background: rgba(20, 25, 40, 0.6);
+            padding: 0.8rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
+        /* Tarjetas */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: rgba(20, 25, 40, 0.85);
+            backdrop-filter: blur(4px);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(200, 180, 100, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #dbb86b;
+        }
+
+        .card h3 {
+            border-left: 4px solid #dbb86b;
+            padding-left: 1rem;
+            margin-bottom: 1rem;
+            color: #dbb86b;
+        }
+
+        /* Mapa de progreso (estilo árbol/estrella) */
+        .progreso {
+            background: linear-gradient(135deg, #0f121f 0%, #1a1f2e 100%);
+            padding: 2rem;
+            border-radius: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .niveles {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .nivel {
+            background: #1e2230;
+            border-radius: 2rem;
+            padding: 0.8rem 1.5rem;
+            min-width: 80px;
+            border: 1px solid #4a4f6a;
+        }
+
+        .nivel.actual {
+            background: #dbb86b;
+            color: #0a0e1a;
+            border-color: #dbb86b;
+            font-weight: bold;
+        }
+
+        .nivel.proximo {
+            border-color: #dbb86b;
+        }
+
+        .niebla {
+            font-style: italic;
+            color: #a0a0b0;
+            margin-top: 1rem;
+        }
+
+        /* Rincones interactivos (modal) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1a1f2e;
+            max-width: 500px;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            border: 1px solid #dbb86b;
+        }
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        /* Botones */
+        button, .btn {
+            background: #8b6b4d;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            margin: 0.5rem 0;
+            display: inline-block;
+            text-decoration: none;
+        }
+        button:hover, .btn:hover {
+            background: #a57c5a;
+            transform: scale(0.98);
+        }
+        button:disabled {
+            background: #4a4f6a;
+            cursor: not-allowed;
+        }
+
+        .contrato {
+            background: rgba(219, 184, 107, 0.1);
+            border-left: 4px solid #dbb86b;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        .contrato p {
+            margin-bottom: 1rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #2a2f44;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- Cabecera -->
+    <div class="header">
+        <h1>⛩️ Sala de Recepción de la Escuela de Misterios</h1>
+        <div class="welcome">Bienvenido, <strong id="userNombre">...</strong>. Has llegado al umbral.</div>
+        <div class="astro-info" id="astroInfo">Cargando información astronómica...</div>
+    </div>
+
+    <!-- El Camino del Ser (progreso) -->
+    <div class="progreso">
+        <h3>🌌 El Camino del Ser</h3>
+        <div class="niveles" id="niveles">
+            <!-- Se llena con JS -->
+        </div>
+        <div class="niebla">... y más allá, la niebla se disipa con cada paso consciente.</div>
+        <div class="niebla" id="citaNicoll">Cargando enseñanza...</div>
+    </div>
+
+    <div class="grid">
+        <!-- Rincón: Espejo de los Espejos Rotos -->
+        <div class="card" onclick="abrirModal('modalEspejo')">
+            <h3>🪞 El Espejo de los Espejos Rotos</h3>
+            <p>¿Quién crees que eres? ¿El que mira o el que es mirado? Haz clic para mirar.</p>
+        </div>
+
+        <!-- Rincón: Balanza de la Deuda Imaginaria -->
+        <div class="card" onclick="abrirModal('modalBalanza')">
+            <h3>⚖️ La Balanza de la Deuda Imaginaria</h3>
+            <p>Suelta la idea de que la vida te debe algo. La única deuda real es contigo mismo.</p>
+        </div>
+
+        <!-- Rincón: Reloj de las Asociaciones -->
+        <div class="card" onclick="abrirModal('modalReloj')">
+            <h3>🕰️ El Reloj de las Asociaciones</h3>
+            <p>Si vives solo en el pasado de tus asociaciones, el futuro nunca llega.</p>
+        </div>
+    </div>
+
+    <!-- Pruebas Materiales (descargas) -->
+    <div class="grid">
+        <div class="card">
+            <h3>📜 Fragmentos de una Enseñanza Desconocida</h3>
+            <p>Extractos de Ouspensky para quienes buscan la primera pista.</p>
+            <a href="/descargas/fragmentos_ouspensky.pdf" class="btn" download>Descargar PDF</a>
+        </div>
+        <div class="card">
+            <h3>🔮 Los 7 Principios del Kybalion</h3>
+            <p>Resumen de las leyes herméticas.</p>
+            <a href="/descargas/kybalion_resumen.pdf" class="btn" download>Descargar PDF</a>
+        </div>
+        <div class="card">
+            <h3>📘 El Espejo y el Tirano</h3>
+            <p>Una reflexión sobre Maurice Nicoll y la observación del Yo.</p>
+            <a href="/descargas/espejo_tirano.pdf" class="btn" download>Descargar PDF</a>
+        </div>
+    </div>
+
+	<!-- ARTE OBJETIVO: Enlaces a hombres notables -->
+	<div class="progreso" style="background: linear-gradient(135deg, #1a1f2e 0%, #0f121f 100%);">
+		<h3>🎭 El Arte Objetivo y los Hombres Notables</h3>
+		<p><em>"Si miramos al pasado encontraremos las pruebas de un tipo superior de hombre..."</em> — Gurdjieff</p>
+		<div class="grid" style="margin-top: 1.5rem;">
+			<!-- Música -->
+			<div class="card">
+				<h3>🎵 Música Notable</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://www.youtube.com/watch?v=7VrD7nYqI" target="_blank">Dimash Kudaibergen - S.O.S</a></li>
+					<li><a href="https://www.youtube.com/watch?v=Z_dPJmMVo" target="_blank">Dimash - Olímpico</a></li>
+					<li><a href="https://www.youtube.com/watch?v=QejKZ5jG" target="_blank">Dimash - Ave Maria</a></li>
+					<li><a href="https://www.youtube.com/watch?v=5nT-qzKm" target="_blank">Dimash - Golden</a></li>
+					<li><a href="https://www.youtube.com/watch?v=KpOtuoHL45Y" target="_blank">Sarah Brightman - Nella Fantasia</a></li>
+					<li><a href="https://www.youtube.com/watch?v=GRxofEmo3HA" target="_blank">Vivaldi - Las Cuatro Estaciones (Primavera)</a></li>
+					<li><a href="https://www.youtube.com/watch?v=_4IRMYuE1hI" target="_blank">Beethoven - Sinfonía No. 5</a></li>
+					<li><a href="https://www.youtube.com/watch?v=GPZDI1Tjc" target="_blank">Strauss - Así habló Zaratustra</a></li>
+					<li><a href="https://www.youtube.com/watch?v=5yE5N5Gc" target="_blank">Mozart - La Flauta Mágica (Obertura)</a></li>
+				</ul>
+			</div>
+			<!-- Cine iniciático -->
+			<div class="card">
+				<h3>🎬 Cine Iniciático</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://www.youtube.com/watch?v=1e8dJvX3" target="_blank">Matrix - La pastilla roja y la pastilla azul</a></li>
+					<li><a href="https://www.youtube.com/watch?v=K5QnGvJc" target="_blank">El nombre de la rosa (tráiler)</a></li>
+					<li><a href="https://www.youtube.com/watch?v=wO1VjM8" target="_blank">El séptimo sello (escena del ajedrez con la Muerte)</a></li>
+				</ul>
+			</div>
+			<!-- Arte visual -->
+			<div class="card">
+				<h3>🎨 Arte Visual</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://upload.wikimedia.org/wikipedia/commons/1/1d/Michelangelo_Moses.jpg" target="_blank">Moisés de Miguel Ángel (imagen HD)</a></li>
+					<li><a href="https://upload.wikimedia.org/wikipedia/commons/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF.jpg" target="_blank">La Gioconda de Da Vinci</a></li>
+					<li><a href="https://upload.wikimedia.org/wikipedia/commons/9/92/El_jard%C3%ADn_de_las_Delicias%2C_by_El_Bosco.jpg" target="_blank">El jardín de las delicias (El Bosco)</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="grid">
+			<div class="card">
+				<h3>🎭 Teatro / Poesía</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://www.youtube.com/watch?v=7XrDnYqI" target="_blank">Monólogo de Segismundo (La vida es sueño) - video actuado</a></li>
+					<li><a href="https://www.youtube.com/watch?v=5nT8tGq" target="_blank">"La vida es sueño" - análisis y contexto</a></li>
+				</ul>
+			</div>
+			<div class="card">
+				<h3>📚 Lecturas Esenciales</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="/descargas/encuentros_hombres_notables.pdf" download>Encuentros con hombres notables - Gurdjieff (PDF)</a></li>
+					<li><a href="/descargas/fragmentos_ensenanza_desconocida.pdf" download>Fragmentos de una enseñanza desconocida - Ouspensky (PDF)</a></li>
+					<li><a href="/descargas/psicologia_evolucion.pdf" download>Psicología de la posible evolución del hombre - Ouspensky (PDF)</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="niebla">"El arte objetivo no es para entretener, sino para despertar." — Gurdjieff</div>
+	</div>
+
+	<!-- EL PUENTE HACIA EL SUPERHOMBRE -->
+	<div class="progreso" style="background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%); border: 1px solid #dbb86b;">
+		<h3>🌉 El puente hacia el Superhombre</h3>
+		<div style="text-align: center; margin: 1rem 0;">
+			<p style="font-style: italic; font-size: 1.2rem;">"El hombre no es más que un puente tendido entre el animal y el Superhombre."<br>— Friedrich Nietzsche, <em>Así habló Zaratustra</em></p>
+		</div>
+		<div class="grid">
+			<!-- Física cuántica y conciencia -->
+			<div class="card">
+				<h3>⚛️ Física Cuántica y Consciencia</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://www.youtube.com/watch?v=ROtV0g5D-2o" target="_blank">Dr. Quantum y el experimento de la doble rendija</a></li>
+					<li><a href="https://www.youtube.com/watch?v=JFpQTK8H" target="_blank">El observador y lo observado (conciencia y mecánica cuántica)</a></li>
+					<li><a href="https://www.youtube.com/watch?v=K6zN5Gq" target="_blank">Roger Penrose - Conciencia y física cuántica</a></li>
+					<li><a href="https://www.youtube.com/watch?v=1xYpY5w" target="_blank">Quantum entanglement y la no-localidad de la conciencia</a></li>
+				</ul>
+			</div>
+			<!-- Inteligencia Artificial y destino humano -->
+			<div class="card">
+				<h3>🤖 Inteligencia Artificial y el Futuro del Hombre</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://www.youtube.com/watch?v=7RwP8Mf" target="_blank">Yuval Noah Harari: IA y el fin del trabajo humano</a></li>
+					<li><a href="https://www.youtube.com/watch?v=2X5R4wD" target="_blank">El dilema de la IA consciente (expertos debaten)</a></li>
+					<li><a href="https://www.youtube.com/watch?v=4qVtZ8M" target="_blank">IA y el futuro de la espiritualidad</a></li>
+					<li><a href="https://www.youtube.com/watch?v=9Z3yKjD" target="_blank">¿Puede una IA ser un maestro espiritual?</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="grid">
+			<!-- Nietzsche y el Superhombre (análisis) -->
+			<div class="card">
+				<h3>🦅 Nietzsche y el Superhombre</h3>
+				<ul style="list-style: none; padding-left: 0;">
+					<li><a href="https://www.youtube.com/watch?v=3qKcY8J" target="_blank">Así habló Zaratustra - El camino del caminante</a></li>
+					<li><a href="https://www.youtube.com/watch?v=5fYpJwJ" target="_blank">Nietzsche: la muerte de Dios y el advenimiento del Superhombre</a></li>
+					<li><a href="https://www.youtube.com/watch?v=9gWxXrW" target="_blank">El eterno retorno y la voluntad de poder</a></li>
+				</ul>
+			</div>
+			<!-- Reflexión final -->
+			<div class="card">
+				<h3>🌌 El puente que tú eres</h3>
+				<p style="margin-bottom: 1rem;">La tecnología, la ciencia y la filosofía son solo herramientas. El verdadero puente lo construyes cada vez que eliges la consciencia sobre el autómata, la creación sobre la repetición.</p>
+				<p><em>“Lo que hace al superhombre no es su poder sobre los demás, sino su dominio sobre sí mismo.”</em></p>
+				<button onclick="alert('El puente eres tú. La Escuela te da las herramientas, pero el paso lo das con tu voluntad.')" style="background: #dbb86b; color: #0a0e1a;">Leer más sobre el puente</button>
+			</div>
+		</div>
+		<div class="niebla">"El hombre es algo que debe ser superado. ¿Qué has hecho tú para superarte?" — Nietzsche</div>
+	</div>
+
+    <!-- Contrato Ético -->
+    <div class="contrato" id="contratoSection">
+        <h3>📜 El Contrato Simbólico</h3>
+        <p><strong>Al aceptar, declaras:</strong></p>
+        <p>1. Que tu presencia aquí es voluntaria y sincera.<br>
+        2. Que respetarás el silencio y la confidencialidad de los otros buscadores.<br>
+        3. Que asumes la responsabilidad de tu propio camino, sin esperar salvadores externos.<br>
+        4. Que el conocimiento no se usa para manipular, sino para servir al despertar propio y ajeno.</p>
+        <button id="btnAceptarContrato" onclick="aceptarContrato()">Comprendo y Acepto el Espíritu de este Camino</button>
+        <p id="contratoMensaje" style="margin-top: 1rem;"></p>
+    </div>
+
+    <!-- Botón central para primer paso (visible tras aceptar contrato) -->
+    <div style="text-align: center; margin: 2rem 0;">
+        <button id="btnPrimerPaso" onclick="primerPaso()" style="background: #dbb86b; color: #0a0e1a;" disabled>🔓 Dar el Primer Paso</button>
+    </div>
+
+    <!-- Módulo Hermes -->
+    <div class="card" style="text-align: center;">
+        <h3>🗝️ El Mensajero te observa</h3>
+        <p>Si tienes dudas, puedes preguntarle en el Vestíbulo.</p>
+        <a href="/frontend/index.html" class="btn">Ir al Vestíbulo</a>
+    </div>
+
+    <!-- Testimonios anónimos -->
+    <div class="grid">
+        <div class="card">
+            <h3>🗣️ Testimonio I</h3>
+            <p>"No sabía que estaba dormido hasta que la Escuela me mostró una grieta. Ahora no puedo dejar de mirar."</p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem;">— Un caminante anónimo</p>
+        </div>
+        <div class="card">
+            <h3>🗣️ Testimonio II</h3>
+            <p>"Llevaba años buscando algo que no podía nombrar. La Escuela no me dio el nombre, me dio el mapa."</p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem;">— Un caminante anónimo</p>
+        </div>
+        <div class="card">
+            <h3>🗣️ Testimonio III</h3>
+            <p>"El miedo a la propia sombra era mi prisión. Aquí aprendí que la sombra no se elimina, se integra."</p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem;">— Un caminante anónimo</p>
+        </div>
+    </div>
+
+    <footer>
+        🌙 El camino es infinito. Cada paso consciente te acerca a ti mismo.
+    </footer>
+
+    <!-- MODALES -->
+    <div id="modalEspejo" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('modalEspejo')">&times;</span>
+            <h3>🪞 Espejo de los Espejos Rotos</h3>
+            <p><em>"Observa el espejo. ¿Ves a alguien conocido? Ese no eres tú. Es el personaje que has construido. La Escuela te enseña a distinguir entre el observador y lo observado."</em></p>
+            <p>— Maurice Nicoll, "Comentarios Psicológicos"</p>
+        </div>
+    </div>
+
+    <div id="modalBalanza" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('modalBalanza')">&times;</span>
+            <h3>⚖️ La Balanza de la Deuda Imaginaria</h3>
+            <p><em>"La vida no te debe nada. La deuda que sientes es contigo mismo: el tiempo que no vives con atención. Empieza a pagarla hoy."</em></p>
+        </div>
+    </div>
+
+    <div id="modalReloj" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('modalReloj')">&times;</span>
+            <h3>🕰️ El Reloj de las Asociaciones</h3>
+            <p><em>"Si repites las mismas historias, vives en el pasado. Asociación tras asociación tejes la prisión. Detente. Mira el ahora."</em></p>
+            <p>— Inspirado en Nicoll</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Variables globales
+    let contratoAceptado = false;
+    let userData = null;
+
+    // Obtener datos del usuario
+    async function cargarDatos() {
+        try {
+            const res = await fetch('/alumno/me');
+            if (res.ok) {
+                userData = await res.json();
+                document.getElementById('userNombre').innerText = userData.nombre || 'Buscador';
+                // Cargar progreso (nivel actual)
+                cargarProgreso(userData.nivel_actual || 0);
+            } else {
+                document.getElementById('userNombre').innerText = 'Buscador Anónimo';
+                cargarProgreso(0);
+            }
+        } catch(e) {
+            console.error(e);
+            document.getElementById('userNombre').innerText = 'Buscador';
+        }
+    }
+
+    function cargarProgreso(nivelActual) {
+        const nivelesDiv = document.getElementById('niveles');
+        // Mostrar nivel actual y siguientes 5 (máximo hasta 22, pero no mostramos límite)
+        let html = '';
+        const maxMostrar = nivelActual + 5;
+        for (let i = nivelActual; i <= maxMostrar; i++) {
+            let clase = '';
+            if (i === nivelActual) clase = 'actual';
+            else if (i === nivelActual + 1) clase = 'proximo';
+            let nombreNivel = '';
+            if (i === 0) nombreNivel = 'Vestíbulo';
+            else if (i === 1) nombreNivel = 'El Mago';
+            else if (i === 2) nombreNivel = 'Automatismo afectivo';
+            else if (i === 3) nombreNivel = 'Atención plena al sentir';
+            else nombreNivel = `Nivel ${i}`;
+            html += `<div class="nivel ${clase}"><strong>${nombreNivel}</strong>${i === nivelActual ? ' (actual)' : ''}</div>`;
+        }
+        html += `<div class="nivel"><em>...</em></div>`;
+        nivelesDiv.innerHTML = html;
+
+        // Cita aleatoria de Nicoll para inspirar
+        const citas = [
+            "«El único cambio real es un cambio de ser, no de circunstancia.» — Maurice Nicoll",
+            "«No se trata de cambiar lo que haces, sino de cambiar quien es el que hace.» — Maurice Nicoll",
+            "«El primer espejo es darte cuenta de que no eres quien creías ser.» — Nicoll",
+            "«La prisión no son las circunstancias, es la identificación con ellas.» — Nicoll"
+        ];
+        document.getElementById('citaNicoll').innerHTML = citas[Math.floor(Math.random() * citas.length)];
+    }
+
+    // Información astronómica (simulada con API real si se desea, aquí uso datos calculados localmente)
+    async function cargarAstroInfo() {
+        try {
+            // Podría usarse una API, pero para simplicidad mostramos datos ficticios
+            const ahora = new Date();
+            const signos = ['Aries', 'Tauro', 'Géminis', 'Cáncer', 'Leo', 'Virgo', 'Libra', 'Escorpio', 'Sagitario', 'Capricornio', 'Acuario', 'Piscis'];
+            const mes = ahora.getMonth();
+            const signo = signos[mes % 12];
+            const fases = ['🌑 Luna nueva', '🌓 Cuarto creciente', '🌕 Luna llena', '🌗 Cuarto menguante'];
+            const fase = fases[Math.floor(Math.random() * fases.length)];
+            document.getElementById('astroInfo').innerHTML = `📅 ${ahora.toLocaleDateString()} | ♓ Sol en ${signo} | ${fase} | 🌸 Estación: ${ahora.getMonth() < 2 ? 'Invierno' : (ahora.getMonth() < 5 ? 'Primavera' : (ahora.getMonth() < 8 ? 'Verano' : 'Otoño'))}<br>✨ "La primavera vuelve. Y tú con ella. Pero no igual."`;
+        } catch(e) {
+            document.getElementById('astroInfo').innerHTML = '🌙 El cielo susurra, pero hoy no hay datos.';
+        }
+    }
+
+    // Contrato ético
+    async function aceptarContrato() {
+        if (contratoAceptado) return;
+        const btn = document.getElementById('btnAceptarContrato');
+        btn.disabled = true;
+        btn.innerText = 'Enviando...';
+        try {
+            const res = await fetch('/aceptar_contrato_etico', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                contratoAceptado = true;
+                document.getElementById('contratoMensaje').innerHTML = '✅ Has aceptado el contrato simbólico. El camino se abre ante ti.';
+                document.getElementById('btnPrimerPaso').disabled = false;
+            } else {
+                document.getElementById('contratoMensaje').innerHTML = data.error || 'Error al aceptar, intenta de nuevo.';
+                btn.disabled = false;
+                btn.innerText = 'Comprendo y Acepto el Espíritu de este Camino';
+            }
+        } catch(e) {
+            document.getElementById('contratoMensaje').innerHTML = 'Error de conexión. Intenta más tarde.';
+            btn.disabled = false;
+            btn.innerText = 'Comprendo y Acepto el Espíritu de este Camino';
+        }
+    }
+
+    function primerPaso() {
+        if (!contratoAceptado) {
+            alert('Debes aceptar el contrato simbólico antes de dar el primer paso.');
+            return;
+        }
+        // Redirigir a inscripción o mostrar modal de precios
+        alert('Aquí irá el flujo de inscripción al Nivel 1 (precio, formulario, etc.). Por ahora, es un botón simbólico.');
+        // window.location.href = '/inscripcion-nivel1';
+    }
+
+    // Modales
+    function abrirModal(id) {
+        document.getElementById(id).style.display = 'flex';
+    }
+    function cerrarModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    // Inicializar
+    cargarDatos();
+    cargarAstroInfo();
+</script>
+</body>
+</html>
