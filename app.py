@@ -1217,6 +1217,19 @@ def estado_hermes():
         'mensaje': 'Despierto' if estado == 'despierto' else '🌙 Hermes descansa. Vuelve más tarde o concierta una cita.'
     })
 
+@app.route('/aceptar_contrato_etico', methods=['POST'])
+@login_required
+def aceptar_contrato_etico():
+    db = get_db()
+    usuario_uuid = session['user_uuid']
+    # Verificar si ya aceptó antes
+    existe = db.execute("SELECT id FROM compromisos_eticos WHERE usuario_uuid = ?", (usuario_uuid,)).fetchone()
+    if existe:
+        return jsonify({'mensaje': 'Ya habías aceptado el contrato. El camino sigue.'})
+    db.execute("INSERT INTO compromisos_eticos (usuario_uuid, fecha_aceptacion) VALUES (?, datetime('now'))", (usuario_uuid,))
+    db.commit()
+    return jsonify({'mensaje': 'Contrato aceptado. Bienvenido al camino.'})
+    
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
     with app.app_context():
