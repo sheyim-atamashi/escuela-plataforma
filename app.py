@@ -1229,6 +1229,290 @@ def aceptar_contrato_etico():
     db.execute("INSERT INTO compromisos_eticos (usuario_uuid, fecha_aceptacion) VALUES (?, datetime('now'))", (usuario_uuid,))
     db.commit()
     return jsonify({'mensaje': 'Contrato aceptado. Bienvenido al camino.'})
+
+# =====================================================
+# ADMIN: USUARIOS (endpoints adicionales)
+# =====================================================
+
+@app.route('/admin/usuarios', methods=['GET'])
+@superusuario_required
+def admin_usuarios():
+    db = get_db()
+    search = request.args.get('search', '')
+    rol = request.args.get('rol', '')
+    nivel = request.args.get('nivel', '')
+    page = int(request.args.get('page', 1))
+    per_page = 20
+    offset = (page - 1) * per_page
+    
+    query = "SELECT * FROM beings WHERE 1=1"
+    params = []
+    if search:
+        query += " AND (nombre LIKE ? OR uuid LIKE ?)"
+        params.extend([f'%{search}%', f'%{search}%'])
+    if rol:
+        query += " AND rol = ?"
+        params.append(rol)
+    if nivel:
+        if nivel == '5+':
+            query += " AND nivel_actual >= 5"
+        else:
+            query += " AND nivel_actual = ?"
+            params.append(int(nivel))
+    
+    query += " ORDER BY fecha_registro DESC LIMIT ? OFFSET ?"
+    params.extend([per_page, offset])
+    usuarios = db.execute(query, params).fetchall()
+    
+    # Registrar log
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'admin_usuarios_listar', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'filtros: rol={rol}, nivel={nivel}, search={search}'))
+    db.commit()
+    
+    return jsonify([dict(u) for u in usuarios])
+
+@app.route('/admin/usuarios/<uuid>/reiniciar_ciclo', methods=['POST'])
+@superusuario_required
+def reiniciar_ciclo(uuid):
+    db = get_db()
+    # No permitir reiniciar el propio ciclo del superusuario
+    if uuid == session['user_uuid']:
+        return jsonify({'error': 'No puedes reiniciar tu propio ciclo'}), 403
+    
+    db.execute("UPDATE beings SET nivel_actual = 1, ciclo_general_actual = 1 WHERE uuid = ?", (uuid,))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'reiniciar_ciclo', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'usuario {uuid} ciclo reiniciado'))
+    db.commit()
+    return jsonify({'mensaje': 'Ciclo reiniciado correctamente'})
+
+@app.route('/admin/usuarios/<uuid>/perfil', methods=['GET'])
+@superusuario_required
+def ver_perfil_usuario(uuid):
+    db = get_db()
+    user = db.execute("SELECT * FROM beings WHERE uuid = ?", (uuid,)).fetchone()
+    if not user:
+        return jsonify({'error': 'Usuario no encontrado'}), 404
+    
+    # Obtener historial de ciclos
+    ciclos = db.execute("SELECT * FROM learning_cycles WHERE student_id = ?", (user['id'],)).fetchall()
+    pagos = db.execute("SELECT * FROM registro_pagos WHERE alumno_uuid = ?", (uuid,)).fetchall()
+    
+    return jsonify({
+        'usuario': dict(user),
+        'ciclos': [dict(c) for c in ciclos],
+        'pagos': [dict(p) for p in pagos]
+    })
+
+@app.route('/admin/usuarios/<uuid>', methods=['DELETE'])
+@superusuario_required
+def eliminar_usuario(uuid):
+    db = get_db()
+    if uuid == session['user_uuid']:
+        return jsonify({'error': 'No puedes eliminar tu propia cuenta'}), 403
+    
+    # Marcar como inactivo (no borrar físicamente)
+    db.execute("UPDATE beings SET activo = 0 WHERE uuid = ?", (uuid,))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'eliminar_usuario', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'usuario {uuid} marcado como inactivo'))
+    db.commit()
+    return jsonify({'mensaje': 'Usuario desactivado'})
+
+# =====================================================
+# ADMIN: SOLICITUDES (aprobar/rechazar)
+# =====================================================
+
+@app.route('/admin/solicitudes/<int:id>/aprobar', methods=['POST'])
+@superusuario_required
+def aprobar_solicitud(id):
+    db = get_db()
+    solicitud = db.execute("SELECT * FROM solicitudes_ciudad WHERE id = ?", (id,)).fetchone()
+    if not solicitud:
+        return jsonify({'error': 'Solicitud no encontrada'}), 404
+    
+    # Cambiar estado del aspirante a nivel 1
+    solicitante = db.execute("SELECT uuid FROM beings WHERE nombre = ?", (solicitud['solicitante_nombre'],)).fetchone()
+    if solicitante:
+        db.execute("UPDATE beings SET nivel_actual = 1 WHERE uuid = ?", (solicitante['uuid'],))
+    
+    db.execute("UPDATE solicitudes_ciudad SET estado = 'aprobada' WHERE id = ?", (id,))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'aprobar_solicitud', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'solicitud {id} aprobada'))
+    db.commit()
+    return jsonify({'mensaje': 'Solicitud aprobada'})
+
+@app.route('/admin/solicitudes/<int:id>/rechazar', methods=['POST'])
+@superusuario_required
+def rechazar_solicitud(id):
+    db = get_db()
+    db.execute("UPDATE solicitudes_ciudad SET estado = 'rechazada' WHERE id = ?", (id,))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'rechazar_solicitud', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'solicitud {id} rechazada'))
+    db.commit()
+    return jsonify({'mensaje': 'Solicitud rechazada'})
+
+# =====================================================
+# ADMIN: CONSEJO (forzar cierre de propuesta)
+# =====================================================
+
+@app.route('/admin/consejo/propuesta/<int:id>/forzar_cierre', methods=['POST'])
+@superusuario_required
+def forzar_cierre_propuesta(id):
+    db = get_db()
+    propuesta = db.execute("SELECT * FROM propuestas_consejo WHERE id = ?", (id,)).fetchone()
+    if not propuesta:
+        return jsonify({'error': 'Propuesta no encontrada'}), 404
+    
+    # Por defecto, forzar como aprobada
+    nuevo_estado = 'aprobada'
+    db.execute("UPDATE propuestas_consejo SET estado = ? WHERE id = ?", (nuevo_estado, id))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'forzar_cierre_propuesta', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'propuesta {id} forzada a {nuevo_estado}'))
+    db.commit()
+    return jsonify({'mensaje': f'Propuesta {id} cerrada como {nuevo_estado}'})
+
+# =====================================================
+# ADMIN: MAESTROS
+# =====================================================
+
+@app.route('/admin/maestros', methods=['GET'])
+@superusuario_required
+def admin_maestros():
+    db = get_db()
+    maestros = db.execute("""
+        SELECT uuid, nombre, rol, nivel_actual, ciclos_completados, disponible_para_ensenar
+        FROM beings WHERE rol IN ('maestro_preparatorio', 'maestro_pleno')
+    """).fetchall()
+    return jsonify([dict(m) for m in maestros])
+
+@app.route('/admin/maestros/estadisticas', methods=['GET'])
+@superusuario_required
+def estadisticas_maestros():
+    db = get_db()
+    preparatorios = db.execute("SELECT COUNT(*) as total FROM beings WHERE rol = 'maestro_preparatorio'").fetchone()
+    plenos = db.execute("SELECT COUNT(*) as total FROM beings WHERE rol = 'maestro_pleno'").fetchone()
+    return jsonify({
+        'preparatorios': preparatorios['total'],
+        'plenos': plenos['total']
+    })
+
+@app.route('/admin/maestros/<uuid>/disponibilidad', methods=['PUT'])
+@superusuario_required
+def cambiar_disponibilidad_maestro(uuid):
+    data = request.get_json()
+    disponible = data.get('disponible', False)
+    db = get_db()
+    db.execute("UPDATE beings SET disponible_para_ensenar = ? WHERE uuid = ?", (1 if disponible else 0, uuid))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'cambiar_disponibilidad', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'maestro {uuid} disponible={disponible}'))
+    db.commit()
+    return jsonify({'mensaje': 'Disponibilidad actualizada'})
+
+# =====================================================
+# ADMIN: CIUDADES
+# =====================================================
+
+@app.route('/admin/ciudades', methods=['GET'])
+@superusuario_required
+def listar_ciudades():
+    db = get_db()
+    ciudades = db.execute("SELECT * FROM ciudades").fetchall()
+    return jsonify([dict(c) for c in ciudades])
+
+@app.route('/admin/ciudades', methods=['POST'])
+@superusuario_required
+def crear_ciudad():
+    data = request.get_json()
+    nombre = data.get('nombre')
+    pais = data.get('pais')
+    if not nombre:
+        return jsonify({'error': 'Nombre de ciudad requerido'}), 400
+    db = get_db()
+    db.execute("INSERT INTO ciudades (nombre, pais) VALUES (?, ?)", (nombre, pais))
+    db.commit()
+    return jsonify({'mensaje': 'Ciudad creada'})
+
+@app.route('/admin/parejas_fundadoras', methods=['GET'])
+@superusuario_required
+def listar_parejas_fundadoras():
+    db = get_db()
+    parejas = db.execute("""
+        SELECT p.*, c.nombre as ciudad_nombre 
+        FROM parejas_fundadoras p
+        JOIN ciudades c ON p.ciudad_id = c.id
+    """).fetchall()
+    return jsonify([dict(p) for p in parejas])
+
+# =====================================================
+# ADMIN: ANDROIDES
+# =====================================================
+
+@app.route('/admin/modelos_androides/pendientes', methods=['GET'])
+@superusuario_required
+def modelos_pendientes():
+    db = get_db()
+    modelos = db.execute("SELECT * FROM modelos_androides WHERE decision = 'pendiente'").fetchall()
+    return jsonify([dict(m) for m in modelos])
+
+@app.route('/admin/modelos_androides/aceptados', methods=['GET'])
+@superusuario_required
+def modelos_aceptados():
+    db = get_db()
+    modelos = db.execute("SELECT * FROM modelos_androides WHERE decision = 'aceptado'").fetchall()
+    return jsonify([dict(m) for m in modelos])
+
+@app.route('/admin/modelos_androides/<int:id>/aceptar', methods=['POST'])
+@superusuario_required
+def aceptar_modelo_androide(id):
+    data = request.get_json()
+    condiciones = data.get('condiciones', '')
+    db = get_db()
+    db.execute("UPDATE modelos_androides SET decision = 'aceptado', condiciones = ? WHERE id = ?", (condiciones, id))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'aceptar_modelo_androide', ?, ?)",
+               (session['user_uuid'], request.remote_addr, f'modelo {id} aceptado'))
+    db.commit()
+    return jsonify({'mensaje': 'Modelo aceptado'})
+
+# =====================================================
+# ADMIN: CONFIGURACIÓN
+# =====================================================
+
+@app.route('/admin/configuracion', methods=['GET'])
+@superusuario_required
+def obtener_configuracion():
+    db = get_db()
+    config = db.execute("SELECT clave, valor FROM configuracion_global").fetchall()
+    result = {}
+    for row in config:
+        result[row['clave']] = row['valor']
+    return jsonify(result)
+
+@app.route('/admin/configuracion', methods=['POST'])
+@superusuario_required
+def guardar_configuracion():
+    data = request.get_json()
+    db = get_db()
+    for clave, valor in data.items():
+        db.execute("UPDATE configuracion_global SET valor = ?, actualizado = CURRENT_TIMESTAMP WHERE clave = ?", (str(valor), clave))
+    db.execute("INSERT INTO logs_sistema (usuario_uuid, accion, ip, detalles) VALUES (?, 'actualizar_configuracion', ?, ?)",
+               (session['user_uuid'], request.remote_addr, 'configuración global actualizada'))
+    db.commit()
+    return jsonify({'mensaje': 'Configuración guardada'})
+
+# =====================================================
+# ADMIN: LOGS
+# =====================================================
+
+@app.route('/admin/logs', methods=['GET'])
+@superusuario_required
+def ver_logs():
+    db = get_db()
+    logs = db.execute("""
+        SELECT l.*, b.nombre as usuario_nombre 
+        FROM logs_sistema l
+        LEFT JOIN beings b ON l.usuario_uuid = b.uuid
+        ORDER BY l.fecha DESC LIMIT 100
+    """).fetchall()
+    return jsonify([dict(l) for l in logs])
     
 # ------------------- INICIAR SERVIDOR -------------------
 if __name__ == '__main__':
