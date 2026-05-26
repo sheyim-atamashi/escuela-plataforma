@@ -5,29 +5,658 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Administración - Escuela de Misterios</title>
     <style>
-        body { background: #0a0e1a; font-family: 'Segoe UI', sans-serif; padding: 2rem; color: #eef; }
-        .container { max-width: 800px; margin: 0 auto; background: rgba(20,25,40,0.9); padding: 2rem; border-radius: 1.5rem; }
-        h1, h2 { border-left: 4px solid #e0b; padding-left: 1rem; }
-        a { color: #dbb86b; text-decoration: none; display: inline-block; margin: 0.5rem 0; }
-        button { background: #8b6b4d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 2rem; cursor: pointer; }
-        button:hover { background: #a57c5a; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0e1a;
+            font-family: 'Segoe UI', 'Times New Roman', serif;
+            color: #eef;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        /* Cabecera */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #dbb86b;
+        }
+        .user-info {
+            background: rgba(20,25,40,0.8);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+        }
+        .btn-cerrar {
+            background: #4a4f6a;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            cursor: pointer;
+        }
+        .btn-cerrar:hover {
+            background: #6c757d;
+        }
+        /* Tabs */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #2a2f44;
+        }
+        .tab-btn {
+            background: #1e2230;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 2rem 2rem 0 0;
+            cursor: pointer;
+            color: #eef;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: #dbb86b;
+            color: #0a0e1a;
+        }
+        /* Contenido de tabs */
+        .tab-content {
+            display: none;
+            background: rgba(20,25,40,0.6);
+            border-radius: 1.5rem;
+            padding: 2rem;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Tablas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid #2a2f44;
+        }
+        th {
+            background: #1a1f2e;
+            color: #dbb86b;
+        }
+        /* Formularios */
+        input, select, textarea {
+            background: #1e2230;
+            border: 1px solid #4a4f6a;
+            color: #eef;
+            padding: 0.6rem;
+            border-radius: 0.8rem;
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        button {
+            background: #8b6b4d;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #a57c5a;
+        }
+        .btn-peligro {
+            background: #a02a2a;
+        }
+        .btn-peligro:hover {
+            background: #c0392b;
+        }
+        .btn-exito {
+            background: #2a6f4f;
+        }
+        .mensaje {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 0.8rem;
+        }
+        .mensaje-exito {
+            background: #2a6f4f;
+        }
+        .mensaje-error {
+            background: #a02a2a;
+        }
+        /* Modales */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1a1f2e;
+            max-width: 600px;
+            width: 90%;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            border: 1px solid #dbb86b;
+        }
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+        .filtros {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .filtros input, .filtros select {
+            width: auto;
+            flex: 1;
+        }
+        /* Estadísticas */
+        .stats {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: #1a1f2e;
+            padding: 1rem;
+            border-radius: 1rem;
+            flex: 1;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>⛩️ Panel de Administración</h1>
-    <p>Bienvenido, <strong>{{ session['user_nombre'] }}</strong>. Este es el centro de gestión de la Escuela.</p>
-    <hr>
-    <h2>🔧 Herramientas</h2>
-    <p><a href="/admin/usuarios/nivel0">👥 Usuarios en nivel 0</a></p>
-    <p><a href="/admin/faq">📌 Gestionar FAQs</a></p>
-    <p><a href="/admin/citas">📖 Gestionar Citas</a></p>
-    <p><a href="/admin/parabolas">📜 Gestionar Parábolas</a></p>
-    <p><a href="/admin/dialectica">💬 Gestionar Enseñanza Dialéctica</a></p>
-    <hr>
-    <p><a href="/cambiar_password">🔐 Cambiar mi contraseña</a></p>
-    <p><a href="/logout">🚪 Cerrar sesión</a></p>
-    <p><a href="/">← Volver al vestíbulo</a></p>
+    <!-- Cabecera -->
+    <div class="header">
+        <h1>⛩️ Panel de Administración</h1>
+        <div class="user-info">
+            <span id="userNombre">Cargando...</span> (Superusuario)
+            <button class="btn-cerrar" onclick="cerrarSesion()">Cerrar sesión</button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="usuarios">👥 Usuarios</button>
+        <button class="tab-btn" data-tab="solicitudes">📋 Solicitudes</button>
+        <button class="tab-btn" data-tab="consejo">🏛️ Consejo</button>
+        <button class="tab-btn" data-tab="maestros">🎓 Maestros</button>
+        <button class="tab-btn" data-tab="ciudades">🌍 Ciudades</button>
+        <button class="tab-btn" data-tab="androides">🤖 Androides</button>
+        <button class="tab-btn" data-tab="configuracion">⚙️ Configuración</button>
+        <button class="tab-btn" data-tab="logs">📜 Logs</button>
+    </div>
+
+    <!-- TAB: Usuarios -->
+    <div id="tab-usuarios" class="tab-content active">
+        <h2>👥 Gestión de Usuarios</h2>
+        <div class="filtros">
+            <input type="text" id="searchUsuario" placeholder="Buscar por nombre o UUID..." onkeyup="cargarUsuarios()">
+            <select id="filtroRol" onchange="cargarUsuarios()">
+                <option value="">Todos los roles</option>
+                <option value="alumno">Alumno</option>
+                <option value="maestro_preparatorio">Maestro Preparatorio</option>
+                <option value="maestro_pleno">Maestro Pleno</option>
+                <option value="superusuario">Superusuario</option>
+            </select>
+            <select id="filtroNivel" onchange="cargarUsuarios()">
+                <option value="">Todos los niveles</option>
+                <option value="0">Nivel 0</option>
+                <option value="1">Nivel 1</option>
+                <option value="2">Nivel 2</option>
+                <option value="3">Nivel 3</option>
+                <option value="4">Nivel 4</option>
+                <option value="5+">Nivel 5+</option>
+            </select>
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="tablaUsuarios">
+                <thead>
+                    <tr><th>Nombre</th><th>UUID</th><th>Rol</th><th>Nivel</th><th>Ciclo</th><th>Registro</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="usuariosLista">
+                    <tr><td colspan="7">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: Solicitudes -->
+    <div id="tab-solicitudes" class="tab-content">
+        <h2>📋 Solicitudes de Aspirantes a Nivel 1</h2>
+        <button onclick="cargarSolicitudes()" style="margin-bottom: 1rem;">⟳ Actualizar</button>
+        <div style="overflow-x: auto;">
+            <table id="tablaSolicitudes">
+                <thead><tr><th>Nombre</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="solicitudesLista"><tr><td colspan="4">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: Consejo -->
+    <div id="tab-consejo" class="tab-content">
+        <h2>🏛️ Consejo de los 12</h2>
+        <div class="stats">
+            <div class="stat-card"><button onclick="generarConsejo()">🎲 Generar nuevo consejo</button></div>
+        </div>
+        <h3>Consejo actual</h3>
+        <div id="consejoActual">Cargando...</div>
+        <h3>Propuestas pendientes</h3>
+        <div id="propuestasPendientes">Cargando...</div>
+        <h3>Historial de propuestas</h3>
+        <div id="propuestasHistorial">Cargando...</div>
+    </div>
+
+    <!-- TAB: Maestros -->
+    <div id="tab-maestros" class="tab-content">
+        <h2>🎓 Gestión de Maestros</h2>
+        <div class="stats" id="estadisticasMaestros"></div>
+        <div style="overflow-x: auto;">
+            <table id="tablaMaestros">
+                <thead><tr><th>Nombre</th><th>Rol</th><th>Nivel</th><th>Ciclos</th><th>Disponible</th><th>Acciones</th></tr></thead>
+                <tbody id="maestrosLista"><tr><td colspan="6">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: Ciudades -->
+    <div id="tab-ciudades" class="tab-content">
+        <h2>🌍 Ciudades y Expansión</h2>
+        <button onclick="mostrarFormularioCiudad()">➕ Añadir ciudad</button>
+        <div id="formCiudad" style="display: none; margin: 1rem 0;">
+            <input type="text" id="ciudadNombre" placeholder="Nombre de la ciudad">
+            <input type="text" id="ciudadPais" placeholder="País">
+            <button onclick="crearCiudad()">Guardar</button>
+            <button onclick="cerrarFormularioCiudad()">Cancelar</button>
+        </div>
+        <h3>Ciudades activas</h3>
+        <div id="ciudadesLista">Cargando...</div>
+        <h3>Parejas fundadoras</h3>
+        <div id="parejasFundadoras">Cargando...</div>
+    </div>
+
+    <!-- TAB: Androides -->
+    <div id="tab-androides" class="tab-content">
+        <h2>🤖 Gestión de Androides</h2>
+        <h3>Solicitudes de modelos</h3>
+        <div id="modelosPendientes">Cargando...</div>
+        <h3>Modelos aceptados</h3>
+        <div id="modelosAceptados">Cargando...</div>
+        <h3>Registrar nuevo androide</h3>
+        <input type="text" id="androideNombre" placeholder="Nombre">
+        <input type="password" id="androidePassword" placeholder="Contraseña">
+        <input type="text" id="androideModeloId" placeholder="ID del modelo">
+        <input type="text" id="androideFabricante" placeholder="Fabricante">
+        <button onclick="registrarAndroide()">Registrar androide</button>
+    </div>
+
+    <!-- TAB: Configuración -->
+    <div id="tab-configuracion" class="tab-content">
+        <h2>⚙️ Configuración Global</h2>
+        <label>Precio Nivel 1 (USD):</label>
+        <input type="number" id="precioNivel1" step="0.01">
+        <label>Porcentaje Escuela (resto para instructor):</label>
+        <input type="number" id="porcentajeEscuela" step="0.01" min="0" max="100">
+        <label>Días de inactividad para superusuario:</label>
+        <input type="number" id="diasInactividad">
+        <label>Mensaje de bienvenida (Sala de Recepción):</label>
+        <textarea id="mensajeBienvenida" rows="3"></textarea>
+        <label>
+            <input type="checkbox" id="registroActivo"> Permitir nuevos registros
+        </label>
+        <button onclick="guardarConfiguracion()">Guardar configuración</button>
+    </div>
+
+    <!-- TAB: Logs -->
+    <div id="tab-logs" class="tab-content">
+        <h2>📜 Logs de Auditoría</h2>
+        <div style="overflow-x: auto;">
+            <table id="tablaLogs">
+                <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+                <tbody id="logsLista"><tr><td colspan="4">Cargando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<!-- Modal para ver perfil de usuario -->
+<div id="modalPerfil" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="cerrarModal('modalPerfil')">&times;</span>
+        <h3>Perfil del usuario</h3>
+        <div id="perfilContenido"></div>
+    </div>
+</div>
+
+<script>
+    // =====================================================
+    // FUNCIONES GENERALES
+    // =====================================================
+    const baseUrl = '';
+    let usuarioActual = null;
+
+    async function obtenerUsuario() {
+        try {
+            const res = await fetch('/alumno/me');
+            if (res.ok) {
+                usuarioActual = await res.json();
+                document.getElementById('userNombre').innerText = usuarioActual.nombre;
+                if (usuarioActual.rol !== 'superusuario') {
+                    alert('No tienes permisos de superusuario. Serás redirigido al vestíbulo.');
+                    window.location.href = '/';
+                }
+            } else {
+                window.location.href = '/login';
+            }
+        } catch(e) {
+            window.location.href = '/login';
+        }
+    }
+
+    function cerrarSesion() {
+        fetch('/logout', { method: 'POST' }).then(() => {
+            window.location.href = '/login';
+        });
+    }
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tabId = btn.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            // Cargar datos según tab
+            if (tabId === 'usuarios') cargarUsuarios();
+            if (tabId === 'solicitudes') cargarSolicitudes();
+            if (tabId === 'consejo') { cargarConsejoActual(); cargarPropuestas(); }
+            if (tabId === 'maestros') cargarMaestros();
+            if (tabId === 'ciudades') { cargarCiudades(); cargarParejasFundadoras(); }
+            if (tabId === 'androides') { cargarModelosPendientes(); cargarModelosAceptados(); }
+            if (tabId === 'configuracion') cargarConfiguracion();
+            if (tabId === 'logs') cargarLogs();
+        });
+    });
+
+    // =====================================================
+    // TAB: USUARIOS
+    // =====================================================
+    async function cargarUsuarios() {
+        const search = document.getElementById('searchUsuario').value;
+        const rol = document.getElementById('filtroRol').value;
+        const nivel = document.getElementById('filtroNivel').value;
+        let url = `/admin/usuarios?search=${encodeURIComponent(search)}&rol=${encodeURIComponent(rol)}&nivel=${encodeURIComponent(nivel)}`;
+        const res = await fetch(url);
+        const usuarios = await res.json();
+        const tbody = document.getElementById('usuariosLista');
+        tbody.innerHTML = '';
+        for (const u of usuarios) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = u.nombre;
+            row.insertCell(1).innerText = u.uuid?.slice(0,8)+'...';
+            row.insertCell(2).innerHTML = `<select onchange="cambiarRol('${u.uuid}', this.value)">${opcionesRol(u.rol)}</select>`;
+            row.insertCell(3).innerText = u.nivel_actual;
+            row.insertCell(4).innerText = u.ciclo_general_actual;
+            row.insertCell(5).innerText = new Date(u.fecha_registro).toLocaleDateString();
+            const acciones = row.insertCell(6);
+            acciones.innerHTML = `
+                <button onclick="verPerfil('${u.uuid}')">👁️</button>
+                <button onclick="reiniciarCiclo('${u.uuid}')" class="btn-exito">🔄</button>
+                <button onclick="eliminarUsuario('${u.uuid}')" class="btn-peligro">🗑️</button>
+            `;
+        }
+    }
+
+    function opcionesRol(actual) {
+        const roles = ['alumno', 'maestro_preparatorio', 'maestro_pleno', 'superusuario'];
+        return roles.map(r => `<option value="${r}" ${r===actual ? 'selected' : ''}>${r}</option>`).join('');
+    }
+
+    async function cambiarRol(uuid, nuevoRol) {
+        if (uuid === usuarioActual?.uuid && nuevoRol !== 'superusuario') {
+            alert('No puedes auto-degradarte.');
+            cargarUsuarios();
+            return;
+        }
+        await fetch(`/admin/usuarios/${uuid}/asignar_rol`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rol: nuevoRol })
+        });
+        cargarUsuarios();
+    }
+
+    async function reiniciarCiclo(uuid) {
+        if (!confirm('¿Reiniciar ciclo? El usuario volverá a nivel 1, ciclo 1.')) return;
+        await fetch(`/admin/usuarios/${uuid}/reiniciar_ciclo`, { method: 'POST' });
+        cargarUsuarios();
+    }
+
+    async function verPerfil(uuid) {
+        const res = await fetch(`/admin/usuarios/${uuid}/perfil`);
+        const data = await res.json();
+        document.getElementById('perfilContenido').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        document.getElementById('modalPerfil').style.display = 'flex';
+    }
+
+    async function eliminarUsuario(uuid) {
+        if (!confirm('¿Eliminar usuario permanentemente? Esta acción no se puede deshacer.')) return;
+        await fetch(`/admin/usuarios/${uuid}`, { method: 'DELETE' });
+        cargarUsuarios();
+    }
+
+    // =====================================================
+    // TAB: SOLICITUDES
+    // =====================================================
+    async function cargarSolicitudes() {
+        const res = await fetch('/admin/solicitudes');
+        const solicitudes = await res.json();
+        const tbody = document.getElementById('solicitudesLista');
+        tbody.innerHTML = '';
+        for (const s of solicitudes) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = s.solicitante_nombre;
+            row.insertCell(1).innerText = new Date(s.fecha_solicitud).toLocaleDateString();
+            row.insertCell(2).innerText = s.estado;
+            const acciones = row.insertCell(3);
+            acciones.innerHTML = `
+                <button onclick="aprobarSolicitud('${s.id}')">✅ Aprobar</button>
+                <button onclick="rechazarSolicitud('${s.id}')" class="btn-peligro">❌ Rechazar</button>
+            `;
+        }
+    }
+
+    async function aprobarSolicitud(id) {
+        await fetch(`/admin/solicitudes/${id}/aprobar`, { method: 'POST' });
+        cargarSolicitudes();
+    }
+
+    async function rechazarSolicitud(id) {
+        await fetch(`/admin/solicitudes/${id}/rechazar`, { method: 'POST' });
+        cargarSolicitudes();
+    }
+
+    // =====================================================
+    // TAB: CONSEJO
+    // =====================================================
+    async function generarConsejo() {
+        if (!confirm('¿Generar nuevo consejo? Se reemplazará el actual.')) return;
+        const res = await fetch('/admin/consejo/generar', { method: 'POST' });
+        const data = await res.json();
+        alert(`Consejo generado con semilla ${data.semilla}`);
+        cargarConsejoActual();
+    }
+
+    async function cargarConsejoActual() {
+        const res = await fetch('/admin/consejo/estado');
+        const data = await res.json();
+        document.getElementById('consejoActual').innerHTML = data.activo ? `<ul>${data.miembros?.map(m => `<li>${m.nombre}</li>`).join('')}</ul>` : 'No hay consejo activo';
+    }
+
+    async function cargarPropuestas() {
+        const res = await fetch('/admin/consejo/propuestas/pendientes');
+        const propuestas = await res.json();
+        document.getElementById('propuestasPendientes').innerHTML = propuestas.map(p => `<div><strong>${p.candidato_nombre}</strong> a ${p.ciudad_destino} - Votos: ${p.votos_favor}/${p.votos_contra} <button onclick="forzarCierre(${p.id})">Forzar cierre</button></div>`).join('');
+    }
+
+    async function forzarCierre(id) {
+        await fetch(`/admin/consejo/propuesta/${id}/forzar_cierre`, { method: 'POST' });
+        cargarPropuestas();
+    }
+
+    // =====================================================
+    // TAB: MAESTROS
+    // =====================================================
+    async function cargarMaestros() {
+        const res = await fetch('/admin/maestros');
+        const maestros = await res.json();
+        const tbody = document.getElementById('maestrosLista');
+        tbody.innerHTML = '';
+        for (const m of maestros) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = m.nombre;
+            row.insertCell(1).innerText = m.rol;
+            row.insertCell(2).innerText = m.nivel_actual;
+            row.insertCell(3).innerText = m.ciclos_completados;
+            row.insertCell(4).innerHTML = `<button onclick="toggleDisponible('${m.uuid}', ${!m.disponible_para_ensenar})">${m.disponible_para_ensenar ? 'Disponible' : 'No disponible'}</button>`;
+            row.insertCell(5).innerHTML = `<button onclick="editarMaestro('${m.uuid}')">✏️</button>`;
+        }
+        // Estadísticas
+        const statsRes = await fetch('/admin/maestros/estadisticas');
+        const stats = await statsRes.json();
+        document.getElementById('estadisticasMaestros').innerHTML = `<div class="stat-card">Maestros preparatorios: ${stats.preparatorios}</div><div class="stat-card">Maestros plenos: ${stats.plenos}</div>`;
+    }
+
+    async function toggleDisponible(uuid, estado) {
+        await fetch(`/admin/maestros/${uuid}/disponibilidad`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disponible: estado }) });
+        cargarMaestros();
+    }
+
+    // =====================================================
+    // TAB: CIUDADES
+    // =====================================================
+    function mostrarFormularioCiudad() {
+        document.getElementById('formCiudad').style.display = 'block';
+    }
+    function cerrarFormularioCiudad() {
+        document.getElementById('formCiudad').style.display = 'none';
+    }
+    async function crearCiudad() {
+        const nombre = document.getElementById('ciudadNombre').value;
+        const pais = document.getElementById('ciudadPais').value;
+        await fetch('/admin/ciudades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, pais }) });
+        cerrarFormularioCiudad();
+        cargarCiudades();
+    }
+    async function cargarCiudades() {
+        const res = await fetch('/admin/ciudades');
+        const ciudades = await res.json();
+        document.getElementById('ciudadesLista').innerHTML = ciudades.map(c => `<div><strong>${c.nombre}</strong> (${c.pais})</div>`).join('');
+    }
+    async function cargarParejasFundadoras() {
+        const res = await fetch('/admin/parejas_fundadoras');
+        const parejas = await res.json();
+        document.getElementById('parejasFundadoras').innerHTML = parejas.map(p => `<div>${p.maestro1} y ${p.maestro2} en ${p.ciudad}</div>`).join('');
+    }
+
+    // =====================================================
+    // TAB: ANDROIDES
+    // =====================================================
+    async function cargarModelosPendientes() {
+        const res = await fetch('/admin/modelos_androides/pendientes');
+        const modelos = await res.json();
+        document.getElementById('modelosPendientes').innerHTML = modelos.map(m => `<div>${m.nombre_modelo} - ${m.fabricante} <button onclick="aceptarModelo(${m.id})">✅ Aceptar</button> <button onclick="rechazarModelo(${m.id})">❌ Rechazar</button></div>`).join('');
+    }
+    async function aceptarModelo(id) {
+        await fetch(`/admin/modelos_androides/${id}/aceptar`, { method: 'POST' });
+        cargarModelosPendientes();
+        cargarModelosAceptados();
+    }
+    async function cargarModelosAceptados() {
+        const res = await fetch('/admin/modelos_androides/aceptados');
+        const modelos = await res.json();
+        document.getElementById('modelosAceptados').innerHTML = modelos.map(m => `<div>${m.nombre_modelo} - ${m.fabricante}</div>`).join('');
+    }
+    async function registrarAndroide() {
+        const nombre = document.getElementById('androideNombre').value;
+        const password = document.getElementById('androidePassword').value;
+        const modelo_id = document.getElementById('androideModeloId').value;
+        const fabricante = document.getElementById('androideFabricante').value;
+        await fetch('/admin/registrar_androide', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, password, modelo_id, fabricante }) });
+        alert('Androide registrado');
+    }
+
+    // =====================================================
+    // TAB: CONFIGURACIÓN
+    // =====================================================
+    async function cargarConfiguracion() {
+        const res = await fetch('/admin/configuracion');
+        const config = await res.json();
+        document.getElementById('precioNivel1').value = config.precio_nivel1;
+        document.getElementById('porcentajeEscuela').value = config.porcentaje_escuela;
+        document.getElementById('diasInactividad').value = config.dias_inactividad;
+        document.getElementById('mensajeBienvenida').value = config.mensaje_bienvenida;
+        document.getElementById('registroActivo').checked = config.registro_activo;
+    }
+    async function guardarConfiguracion() {
+        const config = {
+            precio_nivel1: document.getElementById('precioNivel1').value,
+            porcentaje_escuela: document.getElementById('porcentajeEscuela').value,
+            dias_inactividad: document.getElementById('diasInactividad').value,
+            mensaje_bienvenida: document.getElementById('mensajeBienvenida').value,
+            registro_activo: document.getElementById('registroActivo').checked
+        };
+        await fetch('/admin/configuracion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+        alert('Configuración guardada');
+    }
+
+    // =====================================================
+    // TAB: LOGS
+    // =====================================================
+    async function cargarLogs() {
+        const res = await fetch('/admin/logs');
+        const logs = await res.json();
+        const tbody = document.getElementById('logsLista');
+        tbody.innerHTML = '';
+        for (const log of logs) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = new Date(log.fecha).toLocaleString();
+            row.insertCell(1).innerText = log.usuario;
+            row.insertCell(2).innerText = log.accion;
+            row.insertCell(3).innerText = log.detalle;
+        }
+    }
+
+    // Modal
+    function cerrarModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    // Inicializar
+    obtenerUsuario();
+    cargarUsuarios();
+</script>
 </body>
 </html>
