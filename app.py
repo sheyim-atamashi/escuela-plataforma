@@ -945,19 +945,22 @@ def propuestas_pendientes():
         })
     return jsonify(resultado)
 
-@app.route('/cambiar_password', methods=['POST'])
+@app.route('/cambiar_password', methods=['GET', 'POST'])
 @login_required
 def cambiar_password():
-    data = requests.get_json()
+    if request.method == 'GET':
+        # Mostrar el formulario HTML
+        return send_from_directory('frontend', 'cambiar_password.html')
+    
+    # Si es POST, procesa el cambio
+    data = request.get_json()
     old_password = data.get('old_password')
     new_password = data.get('new_password')
     if not old_password or not new_password:
-        return jsonify({'error': 'Se requieren old_password y new_password'}), 400
+        return jsonify({'error': 'Se requieren ambas contraseñas'}), 400
     db = get_db()
     user = db.execute("SELECT uuid, password_hash FROM beings WHERE uuid = ?", (session['user_uuid'],)).fetchone()
-    if not user:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
-    if not verify_password(old_password, user['password_hash']):
+    if not user or not verify_password(old_password, user['password_hash']):
         return jsonify({'error': 'Contraseña actual incorrecta'}), 401
     new_hash = hash_password(new_password)
     db.execute("UPDATE beings SET password_hash = ? WHERE uuid = ?", (new_hash, user['uuid']))
