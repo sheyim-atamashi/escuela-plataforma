@@ -1121,18 +1121,6 @@ def admin_panel():
         
 @app.route('/estado_hermes', methods=['GET'])
 def estado_hermes():
-    try:
-        with open('hermes_state.txt', 'r') as f:
-            estado = f.read().strip()
-    except:
-        estado = 'dormido'
-    return jsonify({
-        'estado': estado,
-        'mensaje': 'Despierto' if estado == 'despierto' else '🌙 Hermes descansa. Vuelve más tarde o concierta una cita.'
-    })    
-
-@app.route('/estado_hermes', methods=['GET'])
-def estado_hermes():
     import os
     state_file = os.path.join(os.path.dirname(__file__), 'hermes_state.txt')
     try:
